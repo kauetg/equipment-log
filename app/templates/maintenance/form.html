@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% from "_macros.html" import equipment_photo with context %}
+{% set editing = log._id %}
+{% macro val(key, default="") -%}
+  {%- if form is not none and key in form -%}{{ form[key] }}
+  {%- else -%}{{ log.get(key) if log.get(key) is not none else default }}{%- endif -%}
+{%- endmacro %}
+{% set cur_date = (form or {}).get('date') if form is not none else (log.date.strftime('%Y-%m-%d') if log.date else '') %}
+{% set cur_cond = (form or {}).get('resulting_condition') if form is not none else log.resulting_condition %}
+{% set cur_done_by = (form or {}).get('done_by') if form is not none else ((log.done_by.user_id|string) if log.done_by and log.done_by.user_id else ('__other__' if log.done_by else '')) %}
+{% block title %}{{ 'Editar' if editing else 'Nova' }} manutenção — Equipment Log{% endblock %}
+{% block content %}
+<a href="{{ url_for('equipment.detail', equipment_id=e._id) }}#tab-maintenance" class="back-link"><i class="bi bi-chevron-left"></i> {{ e.name }}</a>
+<div class="d-flex align-items-center gap-3 mb-4">
+  <div class="equipment-row-photo">{{ equipment_photo(e) }}</div>
+  <div>
+    <div class="small text-muted">{{ e.name }}</div>
+    <h1 class="h3 mb-0">{{ 'Editar manutenção' if editing else 'Nova manutenção' }}</h1>
+  </div>
+</div>
+
+<form method="post" enctype="multipart/form-data">
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <section class="form-section">
+        <div class="row g-3 mb-3">
+          <div class="col-sm-4">
+            <label class="form-label">Data *</label>
+            <input type="date" name="date" class="form-control" required value="{{ cur_date }}" data-default-today>
+          </div>
+          <div class="col-sm-8">
+            <label class="form-label">Título *</label>
+            <input name="title" class="form-control" required value="{{ val('title') }}" placeholder="Alagamento da bateria, limpeza dos contatos…" {{ 'autofocus' if not editing }}>
+          </div>
+        </div>
+        <label class="form-label d-block">Tipo</label>
+        <div class="status-picker mb-3">
+          {% set cur_kind = val('kind') %}
+          {% for key, label in MAINTENANCE_KINDS.items() %}
+          <input type="radio" class="btn-check" name="kind" id="kind-{{ key }}" value="{{ key }}" {{ 'checked' if cur_kind == key }}>
+          <label class="btn btn-sm btn-outline-secondary" for="kind-{{ key }}">{{ label }}</label>
+          {% endfor %}
+        </div>
+        <label class="form-label">Descrição</label>
+        <textarea name="description" class="form-control" rows="4" placeholder="O que aconteceu, o que foi feito…">{{ val('description') }}</textarea>
+      </section>
+
+      <section class="form-section">
+        <h2 class="form-section-title">Como ficou? *</h2>
+        <div class="condition-picker">
+          {% for key, c in CONDITIONS.items() %}
+          <input type="radio" class="btn-check" name="resulting_condition" id="cond-{{ key }}" value="{{ key }}" required {{ 'checked' if cur_cond == key }}>
+          <label class="condition-option" for="cond-{{ key }}" style="--cond-color: {{ c.color }}">{{ c.label }}</label>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+
+    <div class="col-lg-5">
+      <section class="form-section">
+        <div class="row g-3">
+          <div class="col-6">
+            <label class="form-label">Custo (USD)</label>
+            <input name="cost" class="form-control" inputmode="decimal" placeholder="0" value="{{ val('cost') if val('cost') not in ('0', '0.0') else '' }}">
+          </div>
+          <div class="col-6">
+            <label class="form-label">Quem fez</label>
+            <select name="done_by" id="doneBy" class="form-select">
+              <option value="">—</option>
+              {% for u in users %}<option value="{{ u._id }}" {{ 'selected' if cur_done_by == u._id|string }}>{{ u.name }}</option>{% endfor %}
+              <option value="__other__" {{ 'selected' if cur_done_by == '__other__' }}>Outro…</option>
+            </select>
+          </div>
+        </div>
+        <input name="done_by_other" id="doneByOther" class="form-control mt-2" placeholder="Assistência técnica, loja…"
+               value="{{ (form or {}).get('done_by_other', '') if form is not none else (log.done_by.name if log.done_by and not log.done_by.user_id else '') }}">
+      </section>
+
+      <section class="form-section">
+        <h2 class="form-section-title">Fotos</h2>
+        {% if log.photos %}
+        <div class="photo-remove-grid mb-2">
+          {% for p in log.photos %}
+          <label class="photo-remove">
+            <img src="{{ file_url(p, thumb=True) }}" alt="">
+            <span><input type="checkbox" class="form-check-input" name="remove_photo" value="{{ p.id }}"> remover</span>
+          </label>
+          {% endfor %}
+        </div>
+        {% endif %}
+        <input type="file" name="photos" class="form-control" accept="image/*,application/pdf" multiple>
+      </section>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    {% if editing %}
+    <button type="submit" form="deleteLogForm" class="btn btn-outline-danger me-auto"><i class="bi bi-trash"></i> Excluir</button>
+    {% endif %}
+    <a href="{{ url_for('equipment.detail', equipment_id=e._id) }}#tab-maintenance" class="btn btn-link">Cancelar</a>
+    <button type="submit" class="btn btn-primary px-4"><i class="bi bi-check-lg"></i> Salvar</button>
+  </div>
+</form>
+{% if editing %}
+<form method="post" id="deleteLogForm" action="{{ url_for('maintenance.delete', log_id=log._id) }}" data-confirm="Excluir esta manutenção e as fotos dela?"></form>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    const sel = document.getElementById("doneBy");
+    const other = document.getElementById("doneByOther");
+    const sync = function () { other.hidden = sel.value !== "__other__"; };
+    sel.addEventListener("change", function () { sync(); if (!other.hidden) other.focus(); });
+    sync();
+  })();
+</script>
+{% endblock %}

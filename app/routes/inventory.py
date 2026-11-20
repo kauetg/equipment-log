@@ -16,7 +16,22 @@ def index():
         "count": sum(c["count"] for c in categories),
         "invested": sum(c["invested"] for c in categories),
     }
-    return render_template("inventory/index.html", categories=categories, totals=totals)
+    attention = list(
+        db.equipment.find(
+            {
+                "household_id": current_user.household_id,
+                "condition": {"$in": ["wear", "broken"]},
+                "status": {"$nin": list(INACTIVE_STATUSES)},
+            },
+            {"name": 1, "condition": 1, "photo": 1, "category_id": 1},
+        ).sort([("condition", 1), ("name", 1)])
+    )
+    no_receipt = db.orders.count_documents(
+        {"household_id": current_user.household_id, "kind": {"$in": ["purchase", "upgrade"]}, "receipts": {"$size": 0}}
+    )
+    return render_template(
+        "inventory/index.html", categories=categories, totals=totals, attention=attention, no_receipt=no_receipt
+    )
 
 
 @inventory_bp.route("/categories/<category_id>")

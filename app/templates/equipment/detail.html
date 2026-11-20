@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import status_badge, condition_badge, equipment_photo with context %}
+{% from "_macros.html" import status_badge, condition_badge, equipment_photo, maintenance_entry, attachment_strip with context %}
 {% block title %}{{ e.name }} — Equipment Log{% endblock %}
 {% block content %}
 {% if category %}
@@ -34,7 +34,7 @@
     </dl>
     <div class="d-flex gap-2 flex-wrap">
       <a href="{{ url_for('equipment.edit', equipment_id=e._id) }}" class="btn btn-primary btn-sm"><i class="bi bi-pencil"></i> Editar</a>
-      <a href="{{ url_for('equipment.new_maintenance', equipment_id=e._id) }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-tools"></i> Manutenção</a>
+      <a href="{{ url_for('maintenance.new', equipment_id=e._id) }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-tools"></i> Manutenção</a>
       <form method="post" action="{{ url_for('equipment.delete', equipment_id=e._id) }}"
             data-confirm="Excluir “{{ e.name }}”? Apaga também fotos, documentos, manutenções e pedidos que só tenham este item.">
         <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> Excluir</button>
@@ -47,7 +47,7 @@
   <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-overview" type="button">Visão geral</button></li>
   <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-maintenance" type="button">Manutenção <span class="tab-count">{{ logs|length }}</span></button></li>
   <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-orders" type="button">Compras/Vendas <span class="tab-count">{{ orders|length }}</span></button></li>
-  <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-files" type="button">Arquivos <span class="tab-count">{{ e.documents|length + e.gallery|length }}</span></button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-files" type="button">Arquivos <span class="tab-count">{{ (e.documents or [])|length + (e.gallery or [])|length + receipts|length + maintenance_photos|length }}</span></button></li>
 </ul>
 
 <div class="tab-content">
@@ -81,48 +81,125 @@
   </div>
 
   <div class="tab-pane fade" id="tab-maintenance">
-    {% for log in logs %}
-    <div class="panel mb-2">
-      <div class="d-flex justify-content-between"><strong>{{ log.title }}</strong><span class="text-muted small">{{ log.date|date_br }}</span></div>
-      <div class="small">{{ log.description }}</div>
-      <div class="mt-1">{{ condition_badge(log.resulting_condition) }}</div>
+    <div class="d-flex justify-content-end mb-2">
+      <a href="{{ url_for('maintenance.new', equipment_id=e._id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i> Manutenção</a>
+    </div>
+    {% if logs %}
+    <div class="timeline">
+      {% for log in logs %}{{ maintenance_entry(log) }}{% endfor %}
     </div>
     {% else %}
-    <div class="placeholder-card"><i class="bi bi-cone-striped"></i>Log de manutenção (timeline, fotos, condição resultante) chega na fase 3.</div>
-    {% endfor %}
+    <div class="empty-state"><i class="bi bi-tools"></i><p>Nenhuma manutenção registrada.</p></div>
+    {% endif %}
   </div>
 
   <div class="tab-pane fade" id="tab-orders">
+    <div class="d-flex justify-content-end gap-2 mb-2">
+      {% if e.status != 'sold' %}
+      <a href="{{ url_for('orders.new', equipment=e._id, kind='sale') }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-cash-coin"></i> Vender</a>
+      {% endif %}
+      <a href="{{ url_for('orders.new', equipment=e._id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i> Pedido</a>
+    </div>
     {% for o in orders %}
-    <div class="panel mb-2 order-row">
-      <div>
-        <span class="badge text-bg-light border">{{ ORDER_KINDS.get(o.kind, o.kind) }}</span>
+    <a class="panel mb-2 order-row text-reset text-decoration-none d-flex" href="{{ url_for('orders.detail', order_id=o._id) }}">
+      <div class="min-width-0">
+        <span class="badge order-kind order-kind-{{ o.kind }}">{{ ORDER_KINDS.get(o.kind, o.kind) }}</span>
         <strong class="ms-1">{{ o.counterparty or '—' }}</strong>
         {% if o.platform %}<span class="text-muted small">· {{ o.platform }}</span>{% endif %}
-        <div class="small text-muted">{{ o.date|date_br }}{% if o.other_items %} · pedido com mais {{ o.other_items }} {{ 'item' if o.other_items == 1 else 'itens' }}{% endif %}{% if o.notes %} · {{ o.notes }}{% endif %}</div>
+        <div class="small text-muted">
+          {{ o.date|date_br }}{% if o.other_items %} · pedido com mais {{ o.other_items }} {{ 'item' if o.other_items == 1 else 'itens' }}{% endif %}
+          {% if o.receipts %} · <i class="bi bi-receipt"></i> {{ o.receipts|length }}{% endif %}
+          {% if o.notes %} · {{ o.notes }}{% endif %}
+        </div>
       </div>
-      <div class="order-amount">{{ o.item_amount|usd }}</div>
-    </div>
+      <div class="order-amount {{ 'text-success' if o.kind == 'sale' }}">{{ '+' if o.kind == 'sale' }}{{ o.item_amount|usd if o.item_amount else 'brinde' }}</div>
+    </a>
     {% else %}
-    <p class="text-muted small">Nenhuma compra registrada. Pedidos (com vários itens e recibos) chegam na fase 3.</p>
+    <div class="empty-state"><i class="bi bi-bag"></i><p>Nenhuma compra registrada.</p></div>
     {% endfor %}
   </div>
 
   <div class="tab-pane fade" id="tab-files">
-    {% if e.documents %}
-    <ul class="list-group mb-3">
-      {% for d in e.documents %}
-      <a class="list-group-item list-group-item-action d-flex align-items-center gap-2" href="{{ file_url(d) }}" target="_blank">
-        <i class="bi {{ 'bi-file-earmark-image' if is_image(d) else 'bi-file-earmark-pdf' }} text-primary"></i>
-        <span class="badge text-bg-light border">{{ DOCUMENT_KINDS.get(d.kind, d.kind) }}</span>
-        <span class="text-truncate">{{ d.name }}</span>
-      </a>
-      {% endfor %}
-    </ul>
-    {% else %}
-    <p class="text-muted small">Nenhum documento. Adicione garantia ou manual em <a href="{{ url_for('equipment.edit', equipment_id=e._id) }}">Editar</a>.</p>
-    {% endif %}
-    <div class="placeholder-card"><i class="bi bi-images"></i>Galeria de fotos extras chega na fase 3.</div>
+    <div class="panel mb-3">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h2 class="panel-title mb-0">Galeria</h2>
+        <form method="post" action="{{ url_for('equipment.add_gallery', equipment_id=e._id) }}" enctype="multipart/form-data" class="d-flex gap-2">
+          <input type="file" name="photos" class="form-control form-control-sm" accept="image/*" multiple required>
+          <button class="btn btn-sm btn-primary text-nowrap" type="submit"><i class="bi bi-upload"></i> Enviar</button>
+        </form>
+      </div>
+      {% if e.gallery %}
+      <div class="gallery-grid mt-3">
+        {% for g in e.gallery %}
+        <div class="gallery-item">
+          <a href="{{ file_url(g) }}" target="_blank"><img src="{{ file_url(g, thumb=True) }}" alt="" loading="lazy"></a>
+          <div class="gallery-actions">
+            <form method="post" action="{{ url_for('equipment.set_cover', equipment_id=e._id, file_id=g.id) }}">
+              <button class="btn btn-sm btn-light" title="Usar como capa"><i class="bi bi-star"></i></button>
+            </form>
+            <form method="post" action="{{ url_for('equipment.delete_gallery', equipment_id=e._id, file_id=g.id) }}" data-confirm="Remover esta foto?">
+              <button class="btn btn-sm btn-light text-danger" title="Remover"><i class="bi bi-trash"></i></button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="small text-muted mt-2 mb-0">Sem fotos extras ainda.</p>
+      {% endif %}
+    </div>
+
+    <div class="row g-3">
+      <div class="col-md-4">
+        <div class="panel">
+          <h2 class="panel-title">Documentos</h2>
+          {% if e.documents %}
+          <ul class="list-unstyled mb-0 file-list">
+            {% for d in e.documents %}
+            <li><a href="{{ file_url(d) }}" target="_blank"><i class="bi {{ 'bi-file-earmark-image' if is_image(d) else 'bi-file-earmark-pdf' }}"></i> {{ DOCUMENT_KINDS.get(d.kind, d.kind) }}</a> <span class="small text-muted">{{ d.name }}</span></li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="small text-muted mb-0">Garantia e manual vão em <a href="{{ url_for('equipment.edit', equipment_id=e._id) }}">Editar</a>.</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="panel">
+          <h2 class="panel-title">Notas fiscais</h2>
+          {% if receipts %}
+          {{ attachment_strip(receipts|map(attribute=1)|list) }}
+          <div class="small text-muted mt-1">Dos pedidos em Compras/Vendas.</div>
+          {% else %}
+          <p class="small text-muted mb-0">Nenhuma — adicione no pedido.</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="panel">
+          <h2 class="panel-title">Fotos de manutenção</h2>
+          {% if maintenance_photos %}
+          {{ attachment_strip(maintenance_photos|map(attribute=1)|list) }}
+          {% else %}
+          <p class="small text-muted mb-0">Nenhuma.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Abre a aba indicada no hash (#tab-maintenance etc.) — os forms redirecionam pra cá com âncora
+  (function () {
+    const hash = window.location.hash;
+    const btn = hash && document.querySelector('[data-bs-target="' + hash + '"]');
+    if (btn) bootstrap.Tab.getOrCreateInstance(btn).show();
+    document.querySelectorAll(".detail-tabs [data-bs-toggle]").forEach(function (b) {
+      b.addEventListener("shown.bs.tab", function () { history.replaceState(null, "", b.dataset.bsTarget); });
+    });
+  })();
+</script>
 {% endblock %}

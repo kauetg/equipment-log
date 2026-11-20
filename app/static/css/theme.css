@@ -20,6 +20,9 @@
   --bs-border-radius-2xl: 1.75rem;
 }
 
+/* atributo hidden sempre ganha de display: grid/flex dos componentes */
+[hidden] { display: none !important; }
+
 body {
   background-color: var(--brand-cream);
   font-family: 'Nunito', system-ui, sans-serif;
@@ -360,3 +363,118 @@ a:hover { color: var(--brand-active); }
 .spec-list dd { margin: 0; font-weight: 700; color: var(--brand-navy); }
 .order-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; height: auto; }
 .order-amount { font-weight: 700; color: var(--brand-navy); white-space: nowrap; }
+
+/* ===================== Fase 3 ===================== */
+
+/* Timeline de manutenção */
+.timeline { position: relative; padding-left: 1.4rem; }
+.timeline::before {
+  content: ""; position: absolute; left: 0.42rem; top: 0.4rem; bottom: 0.4rem;
+  width: 2px; background: #dfe4e2;
+}
+.timeline-item { position: relative; margin-bottom: 0.75rem; }
+.timeline-dot {
+  position: absolute; left: -1.4rem; top: 1rem;
+  width: 0.85rem; height: 0.85rem; border-radius: 50%;
+  background: var(--cond-color); border: 3px solid var(--brand-cream);
+}
+.timeline-card {
+  background: #fff; border-radius: var(--bs-border-radius-lg);
+  box-shadow: 0 4px 14px rgba(5, 40, 89, 0.05);
+  padding: 0.8rem 1rem;
+  border-left: 3px solid var(--cond-color);
+}
+.timeline-title { font-weight: 700; color: var(--brand-navy); }
+.timeline-equipment { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; text-decoration: none; }
+
+/* Anexos em miniatura */
+.attachment-strip { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.6rem; }
+.attachment-thumb {
+  width: 64px; height: 64px; border-radius: 0.6rem; overflow: hidden;
+  background: #f3f5f4; border: 1px solid #e6eae8;
+  display: grid; place-items: center; text-decoration: none;
+}
+.attachment-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.attachment-thumb span { display: flex; flex-direction: column; align-items: center; color: var(--status-critical); font-size: 1.3rem; }
+.attachment-thumb small { font-size: 0.55rem; color: #6c757d; line-height: 1.1; text-align: center; padding: 0 2px; }
+
+/* Picker de condição (4 botões grandes) */
+.condition-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+@media (max-width: 575.98px) { .condition-picker { grid-template-columns: repeat(2, 1fr); } }
+.condition-option {
+  display: block; text-align: center; cursor: pointer;
+  padding: 0.75rem 0.5rem; border-radius: var(--bs-border-radius);
+  border: 2px solid color-mix(in srgb, var(--cond-color) 35%, white);
+  color: color-mix(in srgb, var(--cond-color) 75%, black);
+  font-weight: 700; background: #fff;
+}
+.btn-check:checked + .condition-option { background: var(--cond-color); border-color: var(--cond-color); color: #fff; }
+.btn-check:focus-visible + .condition-option { box-shadow: 0 0 0 0.2rem rgba(var(--brand-rgb), 0.3); }
+
+/* Fotos existentes com "remover" */
+.photo-remove-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.photo-remove { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; font-size: 0.75rem; color: #6c757d; cursor: pointer; }
+.photo-remove img, .photo-remove .pdf-tile { width: 80px; height: 80px; object-fit: cover; border-radius: 0.6rem; }
+.pdf-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: #f3f5f4; font-size: 0.6rem; text-align: center; padding: 0.25rem;
+}
+.pdf-tile i { font-size: 1.5rem; color: var(--status-critical); }
+
+/* Itens do pedido */
+.order-item-row {
+  display: grid; grid-template-columns: 1fr 150px auto; gap: 0.5rem; align-items: start;
+  padding: 0.5rem 0; border-bottom: 1px dashed #e6eae8;
+}
+.order-item-row:last-child { border-bottom: none; }
+.item-new-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; margin-top: 0.4rem; }
+@media (max-width: 575.98px) {
+  .order-item-row { grid-template-columns: 1fr auto; }
+  .order-item-amount { grid-column: 1; }
+  .item-remove { grid-row: 1; grid-column: 2; }
+}
+.order-total { font-size: 0.95rem; color: #6c757d; }
+.order-total strong { color: var(--brand-navy); font-size: 1.1rem; }
+
+/* Badges de tipo de pedido */
+.order-kind { font-weight: 700; }
+.order-kind-purchase { background: rgba(var(--brand-rgb), 0.14); color: var(--brand-active); }
+.order-kind-sale { background: #e5f4e8; color: #19692c; }
+.order-kind-upgrade { background: #efe9f7; color: #5a3d86; }
+.order-kind-gift { background: #fdf3dc; color: #8a5a00; }
+
+/* Lista de pedidos */
+.order-list-row { display: flex; align-items: center; gap: 0.9rem; }
+.order-list-date {
+  width: 3rem; flex-shrink: 0; text-align: center;
+  font-size: 0.7rem; color: #9aa1a9; font-weight: 700; line-height: 1.1;
+}
+.order-list-date span { display: block; font-size: 1.25rem; color: var(--brand-navy); font-family: 'Baloo 2', 'Nunito', sans-serif; }
+.detail-header-order { grid-template-columns: 1fr; }
+
+/* Atenção (itens com sinais de uso/quebrados) */
+.attention-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.6rem; }
+.attention-chip {
+  display: flex; align-items: center; gap: 0.6rem;
+  background: #fff; border-radius: var(--bs-border-radius-lg);
+  padding: 0.5rem 0.7rem; color: inherit; text-decoration: none;
+  box-shadow: 0 4px 14px rgba(5, 40, 89, 0.05);
+}
+.attention-chip:hover { color: inherit; box-shadow: 0 8px 22px rgba(5, 40, 89, 0.1); }
+.attention-chip .badge { font-size: 0.68rem; }
+
+/* Galeria */
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.5rem; }
+.gallery-item { position: relative; aspect-ratio: 1 / 1; border-radius: 0.75rem; overflow: hidden; background: #f3f5f4; }
+.gallery-item img { width: 100%; height: 100%; object-fit: cover; }
+.gallery-actions {
+  position: absolute; right: 0.3rem; bottom: 0.3rem; display: flex; gap: 0.25rem;
+  opacity: 0; transition: opacity 0.15s ease;
+}
+.gallery-item:hover .gallery-actions, .gallery-item:focus-within .gallery-actions { opacity: 1; }
+@media (hover: none) { .gallery-actions { opacity: 1; } }
+.gallery-actions .btn { padding: 0.15rem 0.4rem; }
+.file-list li { padding: 0.2rem 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.filter-bar-3 { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 767.98px) { .filter-bar-3 { grid-template-columns: 1fr; } }

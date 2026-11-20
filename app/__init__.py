@@ -1,7 +1,14 @@
 from flask import Flask, current_app, send_from_directory
 from flask_login import current_user
 
-from app.config import CONDITIONS, EQUIPMENT_STATUSES, Config
+from app.config import (
+    CONDITIONS,
+    DOCUMENT_KINDS,
+    EQUIPMENT_STATUSES,
+    MAINTENANCE_KINDS,
+    ORDER_KINDS,
+    Config,
+)
 from app.extensions import init_extensions
 from app.routes import register_blueprints
 
@@ -25,6 +32,9 @@ def _register_context_processors(app):
         ctx = {
             "EQUIPMENT_STATUSES": EQUIPMENT_STATUSES,
             "CONDITIONS": CONDITIONS,
+            "MAINTENANCE_KINDS": MAINTENANCE_KINDS,
+            "ORDER_KINDS": ORDER_KINDS,
+            "DOCUMENT_KINDS": DOCUMENT_KINDS,
             "INTEGRATIONS": app.config["INTEGRATIONS"],
         }
         if current_user.is_authenticated:

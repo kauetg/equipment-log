@@ -34,3 +34,46 @@
   </div>
 </a>
 {%- endmacro %}
+
+{# Miniaturas de anexos (fotos abrem em nova aba; PDF vira ícone) #}
+{% macro attachment_strip(refs) -%}
+{% if refs %}
+<div class="attachment-strip">
+  {% for r in refs %}
+  <a href="{{ file_url(r) }}" target="_blank" class="attachment-thumb" title="{{ r.name }}">
+    {% if is_image(r) %}<img src="{{ file_url(r, thumb=True) }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+    {% else %}<span><i class="bi bi-file-earmark-pdf"></i><small>{{ r.name|truncate(14, True, '…') }}</small></span>{% endif %}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+{%- endmacro %}
+
+{# Item da timeline de manutenção — usado no detalhe do equipamento e na página global #}
+{% macro maintenance_entry(log, equipment=None) -%}
+<div class="timeline-item" style="--cond-color: {{ CONDITIONS.get(log.resulting_condition, {}).get('color', '#9aa1a9') }}">
+  <div class="timeline-dot"></div>
+  <div class="timeline-card">
+    <div class="d-flex justify-content-between align-items-start gap-2">
+      <div class="min-width-0">
+        {% if equipment %}
+        <a class="timeline-equipment" href="{{ url_for('equipment.detail', equipment_id=equipment._id) }}">{{ equipment.name }}</a>
+        {% endif %}
+        <div class="timeline-title">{{ log.title }}</div>
+        <div class="small text-muted">
+          {{ log.date|date_br }}
+          {% if log.kind %} · {{ MAINTENANCE_KINDS.get(log.kind, log.kind) }}{% endif %}
+          {% if log.done_by %} · <i class="bi bi-person"></i> {{ log.done_by.name }}{% endif %}
+          {% if log.cost %} · {{ log.cost|usd }}{% endif %}
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-1 flex-shrink-0">
+        {{ condition_badge(log.resulting_condition) }}
+        <a href="{{ url_for('maintenance.edit', log_id=log._id) }}" class="btn btn-link btn-sm p-1" title="Editar"><i class="bi bi-pencil"></i></a>
+      </div>
+    </div>
+    {% if log.description %}<p class="prewrap small mb-0 mt-2">{{ log.description }}</p>{% endif %}
+    {{ attachment_strip(log.photos) }}
+  </div>
+</div>
+{%- endmacro %}

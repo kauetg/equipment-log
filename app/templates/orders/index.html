@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Pedidos — Equipment Log{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+  <div class="d-flex align-items-center gap-2">
+    <i class="bi bi-bag page-icon"></i>
+    <h1 class="h3 mb-0">Pedidos</h1>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('orders.new', kind='sale') }}" class="btn btn-outline-primary"><i class="bi bi-cash-coin"></i> Venda</a>
+    <a href="{{ url_for('orders.new') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Compra</a>
+  </div>
+</div>
+
+<form method="get" class="filter-bar mb-3">
+  <div class="input-group">
+    <span class="input-group-text"><i class="bi bi-search"></i></span>
+    <input type="search" name="q" class="form-control" placeholder="Loja, plataforma, notas" value="{{ filters.q }}">
+  </div>
+  <select name="kind" class="form-select" onchange="this.form.submit()">
+    <option value="">Todos os tipos</option>
+    {% for k, label in ORDER_KINDS.items() %}<option value="{{ k }}" {{ 'selected' if filters.kind == k }}>{{ label }}</option>{% endfor %}
+  </select>
+  <select name="year" class="form-select" onchange="this.form.submit()">
+    <option value="">Todos os anos</option>
+    {% for y in years %}<option value="{{ y }}" {{ 'selected' if filters.year == y|string }}>{{ y }}</option>{% endfor %}
+  </select>
+  <button class="btn btn-outline-primary" type="submit">Buscar</button>
+</form>
+
+<div class="d-flex flex-wrap gap-3 small text-muted mb-2">
+  <span>{{ orders|length }} pedido{{ 's' if orders|length != 1 }}</span>
+  <span>Gasto: <strong class="text-body">{{ totals.spent|usd }}</strong></span>
+  {% if totals.received %}<span>Vendido: <strong class="text-body">{{ totals.received|usd }}</strong></span>{% endif %}
+</div>
+
+{% if orders %}
+<div class="list-group">
+  {% for o in orders %}
+  <a class="list-group-item list-group-item-action order-list-row" href="{{ url_for('orders.detail', order_id=o._id) }}">
+    <div class="order-list-date">
+      <span>{{ o.date.strftime('%d') }}</span>{{ o.date.strftime('%m/%y') }}
+    </div>
+    <div class="min-width-0 flex-grow-1">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span class="badge order-kind order-kind-{{ o.kind }}">{{ ORDER_KINDS.get(o.kind, o.kind) }}</span>
+        <strong class="text-truncate">{{ o.counterparty or '—' }}</strong>
+        {% if o.platform %}<span class="small text-muted">{{ o.platform }}</span>{% endif %}
+      </div>
+      <div class="small text-muted text-truncate">
+        {% for i in o['items'] %}{{ equipment.get(i.equipment_id, {}).get('name', '?') }}{{ ', ' if not loop.last }}{% endfor %}
+      </div>
+    </div>
+    <div class="text-end flex-shrink-0">
+      <div class="order-amount {{ 'text-success' if o.kind == 'sale' }}">{{ '+' if o.kind == 'sale' }}{{ o.total|usd }}</div>
+      <div class="small text-muted">
+        {% if o.receipts %}<i class="bi bi-receipt" title="{{ o.receipts|length }} recibo(s)"></i>{% else %}<i class="bi bi-receipt text-warning opacity-50" title="Sem nota fiscal"></i>{% endif %}
+        {% if INTEGRATIONS.guardiola %}<i class="bi {{ 'bi-link-45deg' if o.guardiola_tx_ids else 'bi-exclamation-circle text-warning' }}" title="Guardiola"></i>{% endif %}
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state"><i class="bi bi-bag"></i><p>Nenhum pedido{{ ' com esses filtros' if filters.values()|select|list }}.</p></div>
+{% endif %}
+{% endblock %}

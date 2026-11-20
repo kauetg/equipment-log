@@ -97,6 +97,15 @@
       });
     });
   </script>
+  <script>
+    // <input type="date" data-default-today> vazio recebe a data de hoje no fuso do aparelho
+    // (o servidor está em UTC e pode estar um dia atrás/à frente).
+    document.querySelectorAll('input[type="date"][data-default-today]').forEach(function (input) {
+      if (input.value) return;
+      const d = new Date();
+      input.value = [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
+    });
+  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

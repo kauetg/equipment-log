@@ -51,6 +51,9 @@ CONDITIONS = {
     "broken": {"label": "Quebrado", "color": "#d03b3b"},
 }
 
+# Moedas pra anotar o valor original pago na loja (opcional — o app calcula tudo em USD)
+ORIGINAL_CURRENCIES = ["PHP", "SGD", "MYR", "IDR", "THB", "EUR", "BRL", "GBP", "USD"]
+
 ORDER_KINDS = {
     "purchase": "Compra",
     "sale": "Venda",

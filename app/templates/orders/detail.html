@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% from "_macros.html" import equipment_photo, status_badge, attachment_strip with context %}
+{% block title %}{{ ORDER_KINDS.get(o.kind) }} {{ o.counterparty }} — Equipment Log{% endblock %}
+{% block content %}
+<a href="{{ url_for('orders.index') }}" class="back-link"><i class="bi bi-chevron-left"></i> Pedidos</a>
+
+<div class="detail-header detail-header-order">
+  <div>
+    <span class="badge order-kind order-kind-{{ o.kind }} mb-2">{{ ORDER_KINDS.get(o.kind, o.kind) }}</span>
+    <h1 class="h3 mb-1">{{ o.counterparty or 'Sem loja informada' }}</h1>
+    <div class="text-muted mb-3">{{ o.date|date_br }}{% if o.platform %} · {{ o.platform }}{% endif %}</div>
+    <dl class="detail-facts">
+      <div><dt>Total</dt><dd>{{ o.total|usd }}</dd></div>
+      {% if o.original_currency %}<div><dt>Pago na loja</dt><dd>{{ o.original_currency }} {{ '{:,.2f}'.format(o.original_total) }}</dd></div>{% endif %}
+      <div><dt>Itens</dt><dd>{{ o['items']|length }}</dd></div>
+    </dl>
+    {% if o.notes %}<p class="prewrap mb-3">{{ o.notes }}</p>{% endif %}
+    <a href="{{ url_for('orders.edit', order_id=o._id) }}" class="btn btn-primary btn-sm"><i class="bi bi-pencil"></i> Editar</a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="panel">
+      <h2 class="panel-title">Itens</h2>
+      <div class="list-group list-group-flush">
+        {% for i in o['items'] %}
+        {% set e = equipment.get(i.equipment_id) %}
+        {% if e %}
+        <a class="list-group-item list-group-item-action equipment-row px-0" href="{{ url_for('equipment.detail', equipment_id=e._id) }}">
+          <div class="equipment-row-photo">{{ equipment_photo(e, categories.get(e.category_id)) }}</div>
+          <div class="equipment-row-main">
+            <div class="fw-semibold">{{ e.name }}</div>
+            <div class="small text-muted">{{ categories.get(e.category_id, {}).get('name', '') }}{% if e.status != 'active' %} · {{ status_badge(e.status) }}{% endif %}</div>
+          </div>
+          <div class="order-amount">{{ i.amount|usd if i.amount else 'brinde' }}</div>
+        </a>
+        {% else %}
+        <div class="list-group-item px-0 text-muted">Equipamento excluído · {{ i.amount|usd }}</div>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="panel mb-3">
+      <h2 class="panel-title">Nota fiscal / recibos</h2>
+      {% if o.receipts %}
+      {{ attachment_strip(o.receipts) }}
+      {% else %}
+      <p class="small text-muted mb-0"><i class="bi bi-receipt text-warning"></i> Sem nota fiscal. <a href="{{ url_for('orders.edit', order_id=o._id) }}">Adicionar</a></p>
+      {% endif %}
+    </div>
+    <div class="panel">
+      <h2 class="panel-title">🌱 Pagamento</h2>
+      {% if INTEGRATIONS.guardiola %}
+      <p class="small text-muted mb-0">Vincular transação do Guardiola — em breve.</p>
+      {% else %}
+      <p class="small text-muted mb-0">A ligação com a transação no Guardiola chega numa fase futura.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

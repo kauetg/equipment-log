@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import equipment_photo, condition_badge with context %}
 {% block title %}Inventário — Equipment Log{% endblock %}
 {% block content %}
 <div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
@@ -38,8 +39,23 @@
 {% endif %}
 
 <h2 class="h5 mt-5 mb-3">Atenção</h2>
+{% if attention %}
+<div class="attention-row mb-3">
+  {% for e in attention %}
+  <a class="attention-chip" href="{{ url_for('equipment.detail', equipment_id=e._id) }}#tab-maintenance">
+    <span class="equipment-row-photo">{{ equipment_photo(e) }}</span>
+    <span class="min-width-0"><span class="d-block text-truncate fw-semibold">{{ e.name }}</span>{{ condition_badge(e.condition) }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
 <div class="placeholder-grid">
-  <div class="placeholder-card"><i class="bi bi-exclamation-triangle"></i>Itens em “Sinais de Uso” ou “Quebrado” <span class="phase-hint">fase 3</span></div>
+  {% if not attention %}
+  <div class="placeholder-card"><i class="bi bi-emoji-smile"></i>Nada em “Sinais de Uso” ou “Quebrado”.</div>
+  {% endif %}
+  {% if no_receipt %}
+  <a class="placeholder-card text-decoration-none" href="{{ url_for('orders.index') }}"><i class="bi bi-receipt"></i>{{ no_receipt }} compra{{ 's' if no_receipt > 1 }} sem nota fiscal</a>
+  {% endif %}
   <div class="placeholder-card"><i class="bi bi-shield-check"></i>Garantias vencendo <span class="phase-hint">fase 5</span></div>
   <div class="placeholder-card"><i class="bi bi-link-45deg"></i>Pedidos sem pagamento no Guardiola <span class="phase-hint">🌱 fase 6</span></div>
 </div>

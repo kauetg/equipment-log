@@ -11,8 +11,8 @@ from app.config import (
     MAINTENANCE_KINDS,
     ORDER_KINDS,
 )
-from app.routes._helpers import oid_or_404, placeholder
-from app.services.equipment_costs import recompute_total_cost
+from app.routes._helpers import oid_or_404, parse_date, parse_number
+from app.services.orders import sync_after_order_change
 from app.services.integrations.media_logger import exif_key
 from app.services.storage import delete_ref, external_ref, save_upload
 
@@ -35,30 +35,6 @@ def _get_equipment_or_404(equipment_id):
     if not doc:
         abort(404)
     return doc
-
-
-def _parse_date(value):
-    if not value:
-        return None
-    try:
-        return datetime.strptime(value, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-    except ValueError:
-        return None
-
-
-def _parse_number(value):
-    """'1,234.50' / '1234,5' / '' → float | None. Ponto é decimal; vírgula vira ponto só se
-    não houver ponto (aceita '87,5' digitado no celular)."""
-    value = (value or "").strip().replace(" ", "")
-    if not value:
-        return None
-    if "," in value and "." not in value:
-        value = value.replace(",", ".")
-    value = value.replace(",", "")
-    try:
-        return float(value)
-    except ValueError:
-        return None
 
 
 def _all_spec_fields(categories):
@@ -114,7 +90,7 @@ def _read_form(categories, existing=None):
     specs = {k: v for k, v in (existing or {}).get("specs", {}).items() if k not in current_keys}
     for f in category.get("spec_fields", []) if category else []:
         raw = form.get(f"spec__{f['key']}", "")
-        value = _parse_number(raw) if f.get("type") == "number" else (raw.strip() or None)
+        value = parse_number(raw) if f.get("type") == "number" else (raw.strip() or None)
         if value is not None:
             specs[f["key"]] = value
 
@@ -140,7 +116,7 @@ def _read_form(categories, existing=None):
         "category_id": category["_id"] if category else None,
         "subcategory": form.get("subcategory", "").strip(),
         "status": status,
-        "acquired_at": _parse_date(form.get("acquired_at")),
+        "acquired_at": parse_date(form.get("acquired_at")),
         "specs": specs,
         "specs_text": form.get("specs_text", "").strip(),
         "notes": form.get("notes", "").strip(),
@@ -154,11 +130,11 @@ def _read_purchase():
     form = request.form
     if not form.get("register_purchase"):
         return None, []
-    amount = _parse_number(form.get("purchase_amount"))
+    amount = parse_number(form.get("purchase_amount"))
     if amount is None or amount < 0:
         return None, ["Valor da compra inválido (use número, ex.: 2353.50)."]
     return {
-        "date": _parse_date(form.get("purchase_date")),
+        "date": parse_date(form.get("purchase_date")),
         "amount": round(amount, 2),
         "counterparty": form.get("purchase_counterparty", "").strip(),
         "platform": form.get("purchase_platform", "").strip(),
@@ -274,8 +250,7 @@ def new():
         _remember_subcategory(category, fields["subcategory"])
 
         if purchase:
-            db.orders.insert_one(
-                {
+            order = {
                     "household_id": current_user.household_id,
                     "kind": "purchase" if purchase["amount"] > 0 else "gift",
                     "date": purchase["date"] or fields["acquired_at"] or now,
@@ -289,9 +264,9 @@ def new():
                     "guardiola_tx_ids": [],  # 🌱 PLANO.md §8.1
                     "created_by": current_user.id,
                     "created_at": now,
-                }
-            )
-            recompute_total_cost(db, equipment_id)
+            }
+            order["_id"] = db.orders.insert_one(order).inserted_id
+            sync_after_order_change(db, None, order)
 
         flash(f"“{fields['name']}” cadastrado.", "success")
         return redirect(url_for("equipment.detail", equipment_id=equipment_id))
@@ -345,7 +320,13 @@ def detail(equipment_id):
             (i.get("amount") for i in o["items"] if i["equipment_id"] == equipment["_id"]), None
         )
         o["other_items"] = len(o["items"]) - 1
-    logs = list(db.maintenance_logs.find({"equipment_id": equipment["_id"]}).sort("date", -1))
+    logs = list(
+        db.maintenance_logs.find({"equipment_id": equipment["_id"]}).sort([("date", -1), ("created_at", -1)])
+    )
+
+    # Aba Arquivos: tudo que tem anexo ligado ao item, agrupado pela origem
+    receipts = [(o, r) for o in orders for r in o.get("receipts", [])]
+    maintenance_photos = [(log, p) for log in logs for p in log.get("photos", [])]
 
     spec_labels = {}
     for cat in db.categories.find({"household_id": current_user.household_id}, {"spec_fields": 1}):
@@ -356,6 +337,8 @@ def detail(equipment_id):
         "equipment/detail.html",
         e=equipment,
         category=category,
+        receipts=receipts,
+        maintenance_photos=maintenance_photos,
         orders=orders,
         logs=logs,
         spec_labels=spec_labels,
@@ -396,22 +379,53 @@ def delete(equipment_id):
     return redirect(url_for("inventory.index"))
 
 
-@equipment_bp.route("/<equipment_id>/maintenance/new", methods=["GET", "POST"])
+@equipment_bp.route("/<equipment_id>/gallery", methods=["POST"])
 @login_required
-def new_maintenance(equipment_id):
-    _get_equipment_or_404(equipment_id)
-    return placeholder(
-        "Nova manutenção",
-        "bi-tools",
-        planned=[
-            "Data*, título*, tipo (Dano, Reparo, Limpeza, Upgrade, Inspeção)",
-            "Descrição, custo (USD), quem fez (Kauê / Bárbara / outro)",
-            "Condição resultante* — 4 botões: Perfeito, Funcionando, Sinais de Uso, Quebrado",
-            "Fotos (múltiplas)",
-        ],
-        phase=3,
-        back=("Detalhe", url_for("equipment.detail", equipment_id=equipment_id)),
+def add_gallery(equipment_id):
+    equipment = _get_equipment_or_404(equipment_id)
+    refs = [
+        ref
+        for f in request.files.getlist("photos")
+        if (ref := save_upload(f, current_user.household_id, kind="gallery"))
+    ]
+    if refs:
+        current_app.db.equipment.update_one({"_id": equipment["_id"]}, {"$push": {"gallery": {"$each": refs}}})
+        flash(f"{len(refs)} foto(s) adicionada(s).", "success")
+    else:
+        flash("Nenhum arquivo escolhido.", "warning")
+    return redirect(url_for("equipment.detail", equipment_id=equipment_id, _anchor="tab-files"))
+
+
+@equipment_bp.route("/<equipment_id>/gallery/<file_id>/delete", methods=["POST"])
+@login_required
+def delete_gallery(equipment_id, file_id):
+    equipment = _get_equipment_or_404(equipment_id)
+    ref = next((r for r in equipment.get("gallery", []) if r.get("id") == file_id), None)
+    if not ref:
+        abort(404)
+    current_app.db.equipment.update_one({"_id": equipment["_id"]}, {"$pull": {"gallery": {"id": file_id}}})
+    delete_ref(ref)
+    flash("Foto removida.", "success")
+    return redirect(url_for("equipment.detail", equipment_id=equipment_id, _anchor="tab-files"))
+
+
+@equipment_bp.route("/<equipment_id>/cover/<file_id>", methods=["POST"])
+@login_required
+def set_cover(equipment_id, file_id):
+    """Promove uma foto da galeria a capa (a capa antiga volta pra galeria)."""
+    equipment = _get_equipment_or_404(equipment_id)
+    gallery = equipment.get("gallery", [])
+    ref = next((r for r in gallery if r.get("id") == file_id), None)
+    if not ref:
+        abort(404)
+    new_gallery = [r for r in gallery if r.get("id") != file_id]
+    if equipment.get("photo") and not equipment["photo"].get("external_url"):
+        new_gallery.insert(0, equipment["photo"])
+    current_app.db.equipment.update_one(
+        {"_id": equipment["_id"]}, {"$set": {"photo": {**ref, "kind": "photo"}, "gallery": new_gallery}}
     )
+    flash("Foto de capa atualizada.", "success")
+    return redirect(url_for("equipment.detail", equipment_id=equipment_id, _anchor="tab-files"))
 
 
 def _remember_subcategory(category, subcategory):

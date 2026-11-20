@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import maintenance_entry, condition_badge, equipment_photo with context %}
+{% block title %}Manutenção — Equipment Log{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-tools page-icon"></i>
+  <h1 class="h3 mb-0">Manutenção</h1>
+</div>
+
+{% if attention %}
+<h2 class="h6 text-muted text-uppercase mb-2">Precisam de atenção</h2>
+<div class="attention-row mb-4">
+  {% for e in attention %}
+  <a class="attention-chip" href="{{ url_for('equipment.detail', equipment_id=e._id) }}">
+    <span class="equipment-row-photo">{{ equipment_photo(e) }}</span>
+    <span class="min-width-0"><span class="d-block text-truncate fw-semibold">{{ e.name }}</span>{{ condition_badge(e.condition) }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<form method="get" class="filter-bar filter-bar-3 mb-3">
+  <select name="kind" class="form-select" onchange="this.form.submit()">
+    <option value="">Todos os tipos</option>
+    {% for k, label in MAINTENANCE_KINDS.items() %}<option value="{{ k }}" {{ 'selected' if filters.kind == k }}>{{ label }}</option>{% endfor %}
+  </select>
+  <select name="condition" class="form-select" onchange="this.form.submit()">
+    <option value="">Qualquer condição</option>
+    {% for k, c in CONDITIONS.items() %}<option value="{{ k }}" {{ 'selected' if filters.condition == k }}>{{ c.label }}</option>{% endfor %}
+  </select>
+  <select name="person" class="form-select" onchange="this.form.submit()">
+    <option value="">Qualquer pessoa</option>
+    {% for p in people %}<option value="{{ p }}" {{ 'selected' if filters.person == p }}>{{ p }}</option>{% endfor %}
+  </select>
+</form>
+
+{% if logs %}
+<div class="timeline">
+  {% for log in logs %}{{ maintenance_entry(log, equipment.get(log.equipment_id)) }}{% endfor %}
+</div>
+{% else %}
+<div class="empty-state"><i class="bi bi-tools"></i><p>Nenhuma manutenção{{ ' com esses filtros' if filters.values()|select|list }}.</p>
+  <p class="small">Registre pelo botão <strong>Manutenção</strong> na página de um equipamento.</p></div>
+{% endif %}
+{% endblock %}

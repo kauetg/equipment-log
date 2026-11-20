@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% set editing = order._id %}
+{% macro val(key, default="") -%}
+  {%- if form is not none and key in form -%}{{ form[key] }}
+  {%- else -%}{{ order.get(key) if order.get(key) is not none else default }}{%- endif -%}
+{%- endmacro %}
+{% set cur_kind = (form or {}).get('kind') if form is not none else (order.kind or preset_kind) %}
+{% set cur_date = (form or {}).get('date') if form is not none else (order.date.strftime('%Y-%m-%d') if order.date else '') %}
+{% if form is not none %}
+  {% set rows = form.rows %}
+{% elif editing %}
+  {% set rows = [] %}
+  {% for i in order['items'] %}{% set _ = rows.append({'equipment': i.equipment_id|string, 'amount': ('%.2f'|format(i.amount) if i.amount else '')}) %}{% endfor %}
+{% else %}
+  {% set rows = [{'equipment': preset_equipment}] %}
+{% endif %}
+
+{% macro item_row(row={}) -%}
+<div class="order-item-row">
+  <div class="order-item-main">
+    <select name="item_equipment" class="form-select item-equipment">
+      <option value="">Escolha um equipamento…</option>
+      {% for group, items in equipment_groups %}
+      <optgroup label="{{ group }}">
+        {% for e in items %}<option value="{{ e._id }}" {{ 'selected' if row.equipment == e._id|string }}>{{ e.name }}{{ ' (vendido)' if e.status == 'sold' }}</option>{% endfor %}
+      </optgroup>
+      {% endfor %}
+      <option value="__new__" {{ 'selected' if row.equipment == '__new__' }}>＋ Novo item…</option>
+    </select>
+    <div class="item-new-fields">
+      <input name="item_new_name" class="form-control form-control-sm" placeholder="Nome do novo item" value="{{ row.new_name or '' }}">
+      <select name="item_new_category" class="form-select form-select-sm">
+        <option value="">Categoria…</option>
+        {% for c in categories %}<option value="{{ c._id }}" {{ 'selected' if row.new_category == c._id|string }}>{{ c.name }}</option>{% endfor %}
+      </select>
+    </div>
+  </div>
+  <div class="input-group order-item-amount">
+    <span class="input-group-text">USD</span>
+    <input name="item_amount" class="form-control item-amount" inputmode="decimal" placeholder="0" value="{{ row.amount or '' }}">
+  </div>
+  <button type="button" class="btn btn-link text-danger item-remove" title="Remover item"><i class="bi bi-x-lg"></i></button>
+</div>
+{%- endmacro %}
+
+{% block title %}{{ 'Editar pedido' if editing else 'Novo pedido' }} — Equipment Log{% endblock %}
+{% block content %}
+<a href="{{ url_for('orders.detail', order_id=order._id) if editing else url_for('orders.index') }}" class="back-link"><i class="bi bi-chevron-left"></i> {{ 'Pedido' if editing else 'Pedidos' }}</a>
+<h1 class="h3 mb-4">{{ 'Editar pedido' if editing else 'Novo pedido' }}</h1>
+
+<form method="post" enctype="multipart/form-data" id="orderForm">
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <section class="form-section">
+        <div class="status-picker mb-3">
+          {% for key, label in ORDER_KINDS.items() %}
+          <input type="radio" class="btn-check" name="kind" id="kind-{{ key }}" value="{{ key }}" {{ 'checked' if cur_kind == key }} required>
+          <label class="btn btn-sm btn-outline-primary" for="kind-{{ key }}">{{ label }}</label>
+          {% endfor %}
+        </div>
+        <div class="row g-3">
+          <div class="col-sm-4">
+            <label class="form-label">Data *</label>
+            <input type="date" name="date" class="form-control" required value="{{ cur_date }}" data-default-today>
+          </div>
+          <div class="col-sm-4">
+            <label class="form-label" id="counterpartyLabel">Loja / vendedor</label>
+            <input name="counterparty" class="form-control" list="counterpartyList" value="{{ val('counterparty') }}" autocomplete="off">
+            <datalist id="counterpartyList">{% for c in counterparties %}<option value="{{ c }}">{% endfor %}</datalist>
+          </div>
+          <div class="col-sm-4">
+            <label class="form-label">Plataforma</label>
+            <input name="platform" class="form-control" list="platformList" value="{{ val('platform') }}" autocomplete="off">
+            <datalist id="platformList">{% for p in platforms %}<option value="{{ p }}">{% endfor %}</datalist>
+          </div>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <h2 class="form-section-title">Itens</h2>
+        <div id="itemRows">
+          {% for row in rows %}{{ item_row(row) }}{% endfor %}
+        </div>
+        <template id="itemRowTemplate">{{ item_row() }}</template>
+        <div class="d-flex justify-content-between align-items-center mt-2">
+          <button type="button" class="btn btn-sm btn-outline-primary" id="addItem"><i class="bi bi-plus-lg"></i> Item</button>
+          <div class="order-total">Total <strong id="orderTotal">USD 0.00</strong></div>
+        </div>
+        <div class="small text-muted mt-2" id="kindHint"></div>
+      </section>
+    </div>
+
+    <div class="col-lg-5">
+      <section class="form-section">
+        <h2 class="form-section-title">Nota fiscal / recibos</h2>
+        {% if order.receipts %}
+        <div class="photo-remove-grid mb-2">
+          {% for r in order.receipts %}
+          <label class="photo-remove">
+            {% if is_image(r) %}<img src="{{ file_url(r, thumb=True) }}" alt="">{% else %}<span class="pdf-tile"><i class="bi bi-file-earmark-pdf"></i>{{ r.name|truncate(18, True, '…') }}</span>{% endif %}
+            <span><input type="checkbox" class="form-check-input" name="remove_receipt" value="{{ r.id }}"> remover</span>
+          </label>
+          {% endfor %}
+        </div>
+        {% endif %}
+        <input type="file" name="receipts" class="form-control" accept="image/*,application/pdf" multiple>
+        <div class="small text-muted mt-1">Foto da nota, print do pedido, PDF da fatura… (vários)</div>
+      </section>
+
+      <section class="form-section">
+        <h2 class="form-section-title">Valor original <span class="text-muted fw-normal text-lowercase">(opcional)</span></h2>
+        <div class="input-group">
+          <select name="original_currency" class="form-select" style="max-width: 6.5rem">
+            <option value="">—</option>
+            {% for c in currencies %}<option value="{{ c }}" {{ 'selected' if val('original_currency') == c }}>{{ c }}</option>{% endfor %}
+          </select>
+          <input name="original_total" class="form-control" inputmode="decimal" placeholder="ex.: 131990" value="{{ val('original_total') }}">
+        </div>
+        <div class="small text-muted mt-1">Só anotação do que foi pago na moeda da loja — os totais do app são em USD.</div>
+      </section>
+
+      <section class="form-section">
+        <h2 class="form-section-title">Notas</h2>
+        <textarea name="notes" class="form-control" rows="3" placeholder="11.11, veio com brinde, garantia de 2 anos…">{{ val('notes') }}</textarea>
+      </section>
+
+      {% if INTEGRATIONS.guardiola %}
+      <section class="form-section">
+        <h2 class="form-section-title">🌱 Pagamento no Guardiola</h2>
+        <div class="small text-muted">Vincular transação — em breve.</div>
+      </section>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="form-actions">
+    {% if editing %}
+    <button type="submit" form="deleteOrderForm" class="btn btn-outline-danger me-auto"><i class="bi bi-trash"></i> Excluir</button>
+    {% endif %}
+    <a href="{{ url_for('orders.detail', order_id=order._id) if editing else url_for('orders.index') }}" class="btn btn-link">Cancelar</a>
+    <button type="submit" class="btn btn-primary px-4"><i class="bi bi-check-lg"></i> Salvar</button>
+  </div>
+</form>
+{% if editing %}
+<form method="post" id="deleteOrderForm" action="{{ url_for('orders.delete', order_id=order._id) }}"
+      data-confirm="Excluir este pedido e os recibos? Os equipamentos continuam no inventário."></form>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    const rowsBox = document.getElementById("itemRows");
+    const template = document.getElementById("itemRowTemplate");
+    const totalEl = document.getElementById("orderTotal");
+    const hint = document.getElementById("kindHint");
+    const counterpartyLabel = document.getElementById("counterpartyLabel");
+    const HINTS = {
+      purchase: "Compra: o valor de cada item entra no custo total dele.",
+      sale: "Venda: os itens viram “Vendido” e saem do inventário em uso.",
+      upgrade: "Upgrade (memória, peça…): o valor soma no custo do item.",
+      gift: "Brinde: itens com valor zero."
+    };
+
+    function parse(v) {
+      v = (v || "").replace(/\s/g, "");
+      if (v.includes(",") && !v.includes(".")) v = v.replace(",", ".");
+      const n = parseFloat(v.replace(/,/g, ""));
+      return isNaN(n) ? 0 : n;
+    }
+    function kind() {
+      const c = document.querySelector('input[name="kind"]:checked');
+      return c ? c.value : "purchase";
+    }
+    function syncRow(row) {
+      const isNew = row.querySelector(".item-equipment").value === "__new__";
+      row.querySelector(".item-new-fields").hidden = !isNew;
+    }
+    function syncAll() {
+      const k = kind();
+      let total = 0;
+      rowsBox.querySelectorAll(".order-item-row").forEach(function (row) {
+        syncRow(row);
+        const amount = row.querySelector(".item-amount");
+        amount.disabled = k === "gift";
+        if (k !== "gift") total += parse(amount.value);
+      });
+      totalEl.textContent = "USD " + total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      hint.textContent = HINTS[k] || "";
+      counterpartyLabel.textContent = k === "sale" ? "Comprador" : "Loja / vendedor";
+      rowsBox.querySelectorAll(".item-remove").forEach(function (b) {
+        b.style.visibility = rowsBox.children.length > 1 ? "visible" : "hidden";
+      });
+    }
+
+    document.getElementById("addItem").addEventListener("click", function () {
+      rowsBox.appendChild(template.content.cloneNode(true));
+      syncAll();
+      rowsBox.lastElementChild.querySelector("select").focus();
+    });
+    rowsBox.addEventListener("click", function (e) {
+      const btn = e.target.closest(".item-remove");
+      if (btn && rowsBox.children.length > 1) {
+        btn.closest(".order-item-row").remove();
+        syncAll();
+      }
+    });
+    rowsBox.addEventListener("input", syncAll);
+    rowsBox.addEventListener("change", syncAll);
+    document.querySelectorAll('input[name="kind"]').forEach(function (r) { r.addEventListener("change", syncAll); });
+    // input desabilitado (brinde) não é enviado — reabilita antes do submit pra manter as linhas alinhadas
+    document.getElementById("orderForm").addEventListener("submit", function () {
+      rowsBox.querySelectorAll(".item-amount").forEach(function (i) { i.disabled = false; });
+    });
+    syncAll();
+  })();
+</script>
+{% endblock %}

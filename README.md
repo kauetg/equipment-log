@@ -28,5 +28,15 @@ cp .env.example .env        # preencher MONGO_URI (mesmo cluster do guardiola) e
   - "registrar compra agora" cria um pedido de 1 item e atualiza o custo total;
   - detalhe com abas (Visão geral, Manutenção, Compras/Vendas, Arquivos) e exclusão;
   - Configurações > Categorias: criar, editar, reordenar, excluir (só se vazia).
-- Fase 3 (manutenção, pedidos com N itens, galeria) e o resto ainda são placeholders.
+- ✅ Fase 3 — manutenção e pedidos:
+  - manutenção: data, título, tipo, quem fez (usuário ou texto livre), custo, condição resultante
+    (4 botões) e fotos/PDFs; a condição do item = a do log mais recente; timeline global com
+    filtros e "precisam de atenção";
+  - pedidos (compra, venda, upgrade, brinde) com N itens — equipamento existente ou "novo item
+    rápido" —, notas fiscais/recibos (fotos e PDFs), valor original opcional na moeda da loja;
+    venda marca os itens como vendidos (e desfaz se a venda sair); custo total recalculado;
+  - galeria de fotos por equipamento (promover a capa) e aba Arquivos juntando documentos,
+    notas fiscais e fotos de manutenção;
+  - home lista itens em atenção e compras sem nota fiscal.
+- Import do AppSheet (fase 4) e relatórios ainda pendentes.
 - 🌱 Integrações (guardiola, media_logger): `app/services/integrations/`, desligadas por flag no `.env`.
