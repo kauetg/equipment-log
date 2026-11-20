@@ -1,0 +1,36 @@
+{% macro status_badge(status) -%}
+  {%- set s = EQUIPMENT_STATUSES.get(status) -%}
+  {%- if s -%}
+  <span class="badge rounded-pill text-bg-{{ s.color }} status-badge"><i class="bi {{ s.icon }}"></i> {{ s.label }}</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro condition_badge(condition) -%}
+  {%- set c = CONDITIONS.get(condition) -%}
+  {%- if c -%}
+  <span class="badge rounded-pill condition-badge" style="--cond-color: {{ c.color }}">{{ c.label }}</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{# Foto de capa (thumb) ou ícone da categoria quando não tem foto #}
+{% macro equipment_photo(e, category=None, size="thumb") -%}
+  {%- if e.photo -%}
+  <img src="{{ file_url(e.photo, thumb=(size == 'thumb')) }}" alt="{{ e.name }}" loading="lazy" referrerpolicy="no-referrer">
+  {%- else -%}
+  <span class="photo-fallback" style="--cat-color: {{ (category or {}).get('color', '#1a9c8a') }}"><i class="bi {{ (category or {}).get('icon', 'bi-box') }}"></i></span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro equipment_card(e, category=None) -%}
+<a class="equipment-card" href="{{ url_for('equipment.detail', equipment_id=e._id) }}">
+  <div class="equipment-card-photo">{{ equipment_photo(e, category) }}</div>
+  <div class="equipment-card-body">
+    <div class="equipment-card-name">{{ e.name }}</div>
+    <div class="equipment-card-sub">{{ [e.brand, e.model]|select|join(' · ') or e.subcategory or '—' }}</div>
+    <div class="equipment-card-badges">
+      {% if e.status != 'active' %}{{ status_badge(e.status) }}{% endif %}
+      {{ condition_badge(e.condition) }}
+    </div>
+  </div>
+</a>
+{%- endmacro %}

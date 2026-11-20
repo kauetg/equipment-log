@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% set editing = cat._id %}
+{% block title %}{{ 'Editar' if editing else 'Nova' }} categoria — Equipment Log{% endblock %}
+{% block content %}
+<a href="{{ url_for('settings.categories') }}" class="back-link"><i class="bi bi-chevron-left"></i> Categorias</a>
+<h1 class="h3 mb-4">{{ 'Editar ' ~ cat.name if editing else 'Nova categoria' }}</h1>
+
+<form method="post" class="category-form">
+  <div class="row g-4">
+    <div class="col-lg-6">
+      <section class="form-section">
+        <div class="mb-3">
+          <label class="form-label">Nome *</label>
+          <input name="name" class="form-control" required value="{{ cat.name or '' }}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Ícone <span class="text-muted small">(nome do <a href="https://icons.getbootstrap.com/" target="_blank" rel="noopener">Bootstrap Icons</a>)</span></label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi {{ cat.icon or 'bi-box' }}" id="iconPreview"></i></span>
+            <input name="icon" id="iconInput" class="form-control font-monospace" value="{{ cat.icon or 'bi-box' }}" placeholder="bi-camera">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label d-block">Cor</label>
+          <div class="color-picker">
+            {% for value, label in color_choices %}
+            <input type="radio" class="btn-check" name="color" id="color-{{ loop.index }}" value="{{ value }}" {{ 'checked' if (cat.color or color_choices[0][0]) == value }}>
+            <label class="color-swatch" for="color-{{ loop.index }}" style="--swatch: {{ value }}" title="{{ label }}"></label>
+            {% endfor %}
+          </div>
+        </div>
+        <label class="form-check">
+          <input type="checkbox" class="form-check-input" name="has_exif" value="1" {{ 'checked' if cat.has_exif }}>
+          🌱 Equipamentos desta categoria tiram foto (mostra o campo de chaves EXIF pro media_logger)
+        </label>
+      </section>
+    </div>
+
+    <div class="col-lg-6">
+      <section class="form-section">
+        <h2 class="form-section-title">Subcategorias</h2>
+        <textarea name="subcategories" class="form-control" rows="5" placeholder="Uma por linha">{{ (cat.subcategories or [])|join('\n') }}</textarea>
+        <div class="small text-muted mt-1">Subcategoria nova digitada no cadastro de equipamento entra aqui sozinha.</div>
+      </section>
+
+      <section class="form-section">
+        <h2 class="form-section-title">Campos de especificação</h2>
+        <div class="small text-muted mb-2">Aparecem no form do equipamento quando esta categoria é escolhida. Deixe o nome vazio pra remover.</div>
+        <div class="spec-rows">
+          <div class="spec-row spec-row-head small text-muted">
+            <span>Nome</span><span>Unidade</span><span>Tipo</span>
+          </div>
+          {% set rows = (cat.spec_fields or []) + [{}, {}] %}
+          {% for f in rows %}
+          <div class="spec-row">
+            <input name="spec_label" class="form-control form-control-sm" value="{{ f.label or '' }}" placeholder="{{ 'ex.: Profundidade máx.' if loop.index == (cat.spec_fields or [])|length + 1 }}">
+            <input name="spec_unit" class="form-control form-control-sm" value="{{ f.unit or '' }}" placeholder="m, GB…">
+            <select name="spec_type" class="form-select form-select-sm">
+              <option value="number" {{ 'selected' if (f.type or 'number') == 'number' }}>Número</option>
+              <option value="text" {{ 'selected' if f.type == 'text' }}>Texto</option>
+            </select>
+            <input type="hidden" name="spec_key" value="{{ f.key or '' }}">
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    {% if editing %}
+    <button type="submit" form="deleteCategoryForm" class="btn btn-outline-danger me-auto"><i class="bi bi-trash"></i> Excluir</button>
+    {% endif %}
+    <a href="{{ url_for('settings.categories') }}" class="btn btn-link">Cancelar</a>
+    <button type="submit" class="btn btn-primary px-4"><i class="bi bi-check-lg"></i> Salvar</button>
+  </div>
+</form>
+{% if editing %}
+<form method="post" id="deleteCategoryForm" action="{{ url_for('settings.delete_category', category_id=cat._id) }}"
+      data-confirm="Excluir a categoria “{{ cat.name }}”? Só funciona se ela não tiver equipamentos."></form>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    const input = document.getElementById("iconInput");
+    const preview = document.getElementById("iconPreview");
+    input.addEventListener("input", function () {
+      const name = input.value.trim();
+      preview.className = "bi " + (name.startsWith("bi-") ? name : "bi-" + name);
+    });
+  })();
+</script>
+{% endblock %}

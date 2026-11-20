@@ -36,6 +36,10 @@ def _register_context_processors(app):
 
 
 def _register_template_filters(app):
+    from app.services.storage import file_url, is_image
+
+    app.jinja_env.globals.update(file_url=file_url, is_image=is_image)
+
     @app.template_filter("usd")
     def usd_filter(value):
         """usd(2353) -> 'USD 2,353.00'. Tudo no app é USD (ver config.BASE_CURRENCY)."""

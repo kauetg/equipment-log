@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% set editing = equipment and equipment._id %}
+{# Valor de um campo: o que veio no POST (re-render com erro) > o que está salvo > vazio #}
+{% macro val(key, default="") -%}
+  {%- if form is not none and key in form -%}{{ form[key] }}
+  {%- else -%}{{ equipment.get(key) if equipment.get(key) is not none else default }}{%- endif -%}
+{%- endmacro %}
+{% set current_cat = (form or {}).get('category_id') or (equipment.category_id|string if equipment.category_id else '') %}
+{% block title %}{{ 'Editar' if editing else 'Novo' }} equipamento — Equipment Log{% endblock %}
+{% block content %}
+<a href="{{ url_for('equipment.detail', equipment_id=equipment._id) if editing else url_for('inventory.index') }}" class="back-link">
+  <i class="bi bi-chevron-left"></i> {{ 'Detalhe' if editing else 'Inventário' }}
+</a>
+<h1 class="h3 mb-4">{{ 'Editar ' ~ equipment.name if editing else 'Novo equipamento' }}</h1>
+
+<form method="post" enctype="multipart/form-data" class="equipment-form" id="equipmentForm">
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <section class="form-section">
+        <h2 class="form-section-title">Identificação</h2>
+        <div class="mb-3">
+          <label class="form-label">Nome *</label>
+          <input name="name" class="form-control" required value="{{ val('name') }}" placeholder="Sony A7 IV" {{ 'autofocus' if not editing }}>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-sm-6">
+            <label class="form-label">Categoria *</label>
+            <select name="category_id" id="categorySelect" class="form-select" required>
+              <option value="">Escolha…</option>
+              {% for c in categories %}
+              <option value="{{ c._id }}" data-has-exif="{{ 1 if c.has_exif else 0 }}" {{ 'selected' if current_cat == c._id|string }}>{{ c.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label">Subcategoria</label>
+            <input name="subcategory" id="subcategoryInput" class="form-control" value="{{ val('subcategory') }}" list="" autocomplete="off" placeholder="escolha ou digite uma nova">
+            {% for c in categories %}
+            <datalist id="subcats-{{ c._id }}">{% for s in c.subcategories %}<option value="{{ s }}">{% endfor %}</datalist>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-sm-6">
+            <label class="form-label">Marca</label>
+            <input name="brand" class="form-control" value="{{ val('brand') }}" list="brandList" autocomplete="off">
+            <datalist id="brandList">{% for b in brands %}<option value="{{ b }}">{% endfor %}</datalist>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label">Modelo</label>
+            <input name="model" class="form-control" value="{{ val('model') }}">
+          </div>
+        </div>
+        <div class="row g-3">
+          <div class="col-sm-6">
+            <label class="form-label">Nº de série</label>
+            <input name="serial_number" class="form-control" value="{{ val('serial_number') }}">
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label">Data de aquisição</label>
+            {% set acq = (form or {}).get('acquired_at') if form is not none and 'acquired_at' in form else (equipment.acquired_at.strftime('%Y-%m-%d') if equipment.acquired_at else '') %}
+            <input type="date" name="acquired_at" class="form-control" value="{{ acq }}">
+          </div>
+        </div>
+      </section>
+
+      <section class="form-section" id="specsSection">
+        <h2 class="form-section-title">Especificações</h2>
+        <div class="row g-3" id="specFields">
+          {% for f in spec_fields %}
+          {% set raw = (form or {}).get('spec__' ~ f.key) if form is not none and ('spec__' ~ f.key) in form else equipment.get('specs', {}).get(f.key, '') %}
+          <div class="col-sm-4 spec-field" data-categories="{{ f.category_ids|join(' ') }}">
+            <label class="form-label">{{ f.label }}</label>
+            <div class="input-group">
+              <input name="spec__{{ f.key }}" class="form-control" inputmode="decimal" value="{{ raw|int if raw is number and raw == raw|int else raw }}">
+              {% if f.unit %}<span class="input-group-text">{{ f.unit }}</span>{% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="mt-3">
+          <label class="form-label">Especificações técnicas (texto livre)</label>
+          <textarea name="specs_text" class="form-control" rows="2" placeholder="Processador, sensor, conexões…">{{ val('specs_text') }}</textarea>
+        </div>
+        <div class="mt-3 exif-field" id="exifField">
+          <label class="form-label">🌱 Chaves EXIF <span class="text-muted small">(media_logger — uma por linha, ex.: <code>SONY - ILCE-7M4</code>)</span></label>
+          <textarea name="exif_keys" class="form-control font-monospace" rows="2">{{ (form or {}).get('exif_keys') if form is not none and 'exif_keys' in form else equipment.get('exif_keys', [])|join('\n') }}</textarea>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <h2 class="form-section-title">Status e notas</h2>
+        <div class="status-picker mb-3">
+          {% set cur_status = val('status', 'active') %}
+          {% for key, s in EQUIPMENT_STATUSES.items() %}
+          <input type="radio" class="btn-check" name="status" id="status-{{ key }}" value="{{ key }}" {{ 'checked' if cur_status == key }}>
+          <label class="btn btn-sm btn-outline-{{ s.color }}" for="status-{{ key }}"><i class="bi {{ s.icon }}"></i> {{ s.label }}</label>
+          {% endfor %}
+        </div>
+        <textarea name="notes" class="form-control" rows="3" placeholder="Observações (veio com…, marcado com…)">{{ val('notes') }}</textarea>
+      </section>
+    </div>
+
+    <div class="col-lg-5">
+      <section class="form-section">
+        <h2 class="form-section-title">Foto de capa</h2>
+        {% if equipment.photo %}
+        <div class="current-photo mb-2">
+          <img src="{{ file_url(equipment.photo, thumb=True) }}" alt="" referrerpolicy="no-referrer">
+          <label class="form-check small mt-2"><input type="checkbox" class="form-check-input" name="remove_photo" value="1"> Remover foto</label>
+        </div>
+        {% endif %}
+        <input type="file" name="photo" class="form-control mb-2" accept="image/*">
+        <input type="url" name="photo_url" class="form-control form-control-sm" placeholder="…ou cole o link de uma imagem"
+               value="{{ equipment.photo.external_url if equipment.photo and equipment.photo.external_url else '' }}">
+      </section>
+
+      <section class="form-section">
+        <h2 class="form-section-title">Documentos</h2>
+        {% if equipment.documents %}
+        <ul class="list-unstyled doc-list mb-3">
+          {% for d in equipment.documents %}
+          <li>
+            <label class="form-check-label d-flex align-items-center gap-2">
+              <input type="checkbox" class="form-check-input" name="remove_document" value="{{ d.id }}" title="Marcar pra remover">
+              <i class="bi {{ 'bi-file-earmark-image' if is_image(d) else 'bi-file-earmark-pdf' }}"></i>
+              <span class="badge text-bg-light border">{{ DOCUMENT_KINDS.get(d.kind, d.kind) }}</span>
+              <a href="{{ file_url(d) }}" target="_blank" class="text-truncate">{{ d.name }}</a>
+            </label>
+          </li>
+          {% endfor %}
+          <li class="small text-muted">Marque pra remover ao salvar.</li>
+        </ul>
+        {% endif %}
+        {% for kind, label in DOCUMENT_KINDS.items() %}
+        <label class="form-label small mb-1">{{ label }}</label>
+        <input type="file" name="document_{{ kind }}" class="form-control form-control-sm mb-2" accept="image/*,application/pdf" {{ 'multiple' if kind == 'other' }}>
+        {% endfor %}
+      </section>
+
+      {% if not editing %}
+      <section class="form-section purchase-section">
+        <label class="form-check form-switch mb-0">
+          <input type="checkbox" class="form-check-input" name="register_purchase" id="registerPurchase" value="1" {{ 'checked' if (form or {}).get('register_purchase') }}>
+          <span class="form-section-title d-inline">Registrar compra agora</span>
+        </label>
+        <div id="purchaseFields" class="mt-3">
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <label class="form-label">Valor (USD)</label>
+              <input name="purchase_amount" class="form-control" inputmode="decimal" placeholder="0 = brinde" value="{{ (form or {}).get('purchase_amount', '') }}">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Data</label>
+              <input type="date" name="purchase_date" class="form-control" value="{{ (form or {}).get('purchase_date', '') }}">
+            </div>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <label class="form-label">Loja / vendedor</label>
+              <input name="purchase_counterparty" class="form-control" list="counterpartyList" value="{{ (form or {}).get('purchase_counterparty', '') }}">
+              <datalist id="counterpartyList">{% for c in counterparties %}<option value="{{ c }}">{% endfor %}</datalist>
+            </div>
+            <div class="col-6">
+              <label class="form-label">Plataforma</label>
+              <input name="purchase_platform" class="form-control" list="platformList" placeholder="Lazada, Amazon…" value="{{ (form or {}).get('purchase_platform', '') }}">
+              <datalist id="platformList"><option value="Lazada"><option value="Amazon"><option value="Loja física"><option value="Shopee"></datalist>
+            </div>
+          </div>
+          <input name="purchase_notes" class="form-control" placeholder="Notas da compra (11.11, veio com…)" value="{{ (form or {}).get('purchase_notes', '') }}">
+          <div class="small text-muted mt-2">Cria um pedido de compra com este item. Pedidos com vários itens chegam na fase 3.</div>
+        </div>
+      </section>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <a href="{{ url_for('equipment.detail', equipment_id=equipment._id) if editing else url_for('inventory.index') }}" class="btn btn-link">Cancelar</a>
+    <button type="submit" class="btn btn-primary px-4"><i class="bi bi-check-lg"></i> {{ 'Salvar' if editing else 'Cadastrar' }}</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    const select = document.getElementById("categorySelect");
+    const subInput = document.getElementById("subcategoryInput");
+    const specFields = document.querySelectorAll(".spec-field");
+    const specsSection = document.getElementById("specsSection");
+    const exifField = document.getElementById("exifField");
+
+    // Mostra só os campos de spec da categoria escolhida; troca o datalist da subcategoria
+    function syncCategory() {
+      const catId = select.value;
+      let visible = 0;
+      specFields.forEach(function (el) {
+        const show = catId && el.dataset.categories.split(" ").includes(catId);
+        el.hidden = !show;
+        if (show) visible++;
+      });
+      document.getElementById("specFields").hidden = visible === 0;
+      subInput.setAttribute("list", catId ? "subcats-" + catId : "");
+      const opt = select.selectedOptions[0];
+      exifField.hidden = !(opt && opt.dataset.hasExif === "1");
+      specsSection.classList.toggle("is-empty", !catId);
+    }
+    select.addEventListener("change", function () {
+      subInput.value = "";
+      syncCategory();
+    });
+    syncCategory();
+
+    const toggle = document.getElementById("registerPurchase");
+    if (toggle) {
+      const fields = document.getElementById("purchaseFields");
+      const sync = function () { fields.hidden = !toggle.checked; };
+      toggle.addEventListener("change", sync);
+      sync();
+    }
+  })();
+</script>
+{% endblock %}

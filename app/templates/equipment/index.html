@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, condition_badge, equipment_photo with context %}
+{% block title %}Equipamentos — Equipment Log{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+  <h1 class="h3 mb-0">Equipamentos</h1>
+  <a href="{{ url_for('equipment.new') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Equipamento</a>
+</div>
+
+<form method="get" class="filter-bar mb-3">
+  <div class="input-group">
+    <span class="input-group-text"><i class="bi bi-search"></i></span>
+    <input type="search" name="q" class="form-control" placeholder="Nome, marca, modelo ou nº de série" value="{{ filters.q }}" autofocus>
+  </div>
+  <select name="category" class="form-select" onchange="this.form.submit()">
+    <option value="">Todas as categorias</option>
+    {% for c in categories %}<option value="{{ c._id }}" {{ 'selected' if filters.category == c._id|string }}>{{ c.name }}</option>{% endfor %}
+  </select>
+  <select name="status" class="form-select" onchange="this.form.submit()">
+    <option value="">Qualquer status</option>
+    {% for key, s in EQUIPMENT_STATUSES.items() %}<option value="{{ key }}" {{ 'selected' if filters.status == key }}>{{ s.label }}</option>{% endfor %}
+  </select>
+  <button class="btn btn-outline-primary" type="submit">Buscar</button>
+</form>
+
+<div class="small text-muted mb-2">{{ items|length }} resultado{{ 's' if items|length != 1 }}</div>
+
+{% if items %}
+<div class="list-group equipment-list">
+  {% for e in items %}
+  {% set cat = cats_by_id.get(e.category_id, {}) %}
+  <a class="list-group-item list-group-item-action equipment-row" href="{{ url_for('equipment.detail', equipment_id=e._id) }}">
+    <div class="equipment-row-photo">{{ equipment_photo(e, cat) }}</div>
+    <div class="equipment-row-main">
+      <div class="fw-semibold">{{ e.name }}</div>
+      <div class="small text-muted">{{ cat.name or '—' }}{% if e.subcategory %} · {{ e.subcategory }}{% endif %}{% if e.serial_number %} · SN {{ e.serial_number }}{% endif %}</div>
+    </div>
+    <div class="equipment-row-badges">
+      {{ status_badge(e.status) }}
+      {{ condition_badge(e.condition) }}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state"><i class="bi bi-search"></i><p>Nada encontrado.</p></div>
+{% endif %}
+{% endblock %}

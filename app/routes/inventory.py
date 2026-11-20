@@ -1,8 +1,8 @@
-from flask import Blueprint, abort, current_app, render_template, url_for
+from flask import Blueprint, abort, current_app, render_template, request
 from flask_login import current_user, login_required
 
-from app.routes._helpers import oid_or_404, placeholder
-from app.services.inventory_queries import get_categories_with_counts
+from app.routes._helpers import oid_or_404
+from app.services.inventory_queries import INACTIVE_STATUSES, get_categories_with_counts
 
 inventory_bp = Blueprint("inventory", __name__)
 
@@ -28,16 +28,32 @@ def category(category_id):
     if not cat:
         abort(404)
 
-    # Fase 2: chips de subcategoria + grid de equipamentos (foto, nome, badges)
-    return placeholder(
-        cat["name"],
-        cat.get("icon", "bi-box"),
-        planned=[
-            "Chips de subcategoria pra filtrar: " + (", ".join(cat.get("subcategories", [])) or "—"),
-            "Grid de equipamentos: foto de capa, nome, marca/modelo",
-            "Badges de status (Ativo, Quebrado…) e condição (Perfeito, Sinais de Uso…)",
-            "Botão “+ Equipamento” já com a categoria preenchida",
-        ],
-        phase=2,
-        back=("Inventário", url_for("inventory.index")),
+    sub = request.args.get("sub", "")
+    show_all = request.args.get("all") == "1"  # inclui vendidos/descartados
+
+    base = {"household_id": current_user.household_id, "category_id": cat["_id"]}
+    if not show_all:
+        base["status"] = {"$nin": list(INACTIVE_STATUSES)}
+
+    items = list(current_app.db.equipment.find({**base, **({"subcategory": sub} if sub else {})}).sort("name", 1))
+
+    # Contagem por subcategoria pros chips (respeitando o filtro de inativos)
+    sub_counts = {}
+    for row in current_app.db.equipment.aggregate([{"$match": base}, {"$group": {"_id": "$subcategory", "n": {"$sum": 1}}}]):
+        sub_counts[row["_id"] or ""] = row["n"]
+    hidden_inactive = 0
+    if not show_all:
+        hidden_inactive = current_app.db.equipment.count_documents(
+            {"household_id": current_user.household_id, "category_id": cat["_id"], "status": {"$in": list(INACTIVE_STATUSES)}}
+        )
+
+    return render_template(
+        "inventory/category.html",
+        cat=cat,
+        items=items,
+        sub=sub,
+        sub_counts=sub_counts,
+        total=sum(sub_counts.values()),
+        show_all=show_all,
+        hidden_inactive=hidden_inactive,
     )

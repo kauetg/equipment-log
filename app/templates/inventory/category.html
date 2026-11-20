@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_macros.html" import equipment_card with context %}
+{% block title %}{{ cat.name }} — Equipment Log{% endblock %}
+{% block content %}
+<a href="{{ url_for('inventory.index') }}" class="back-link"><i class="bi bi-chevron-left"></i> Inventário</a>
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+  <div class="d-flex align-items-center gap-2">
+    <span class="category-card-icon mb-0" style="--cat-color: {{ cat.color }}"><i class="bi {{ cat.icon }}"></i></span>
+    <h1 class="h3 mb-0">{{ cat.name }}</h1>
+  </div>
+  <a href="{{ url_for('equipment.new', category=cat._id) }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Equipamento</a>
+</div>
+
+{% set qs_all = {'all': '1'} if show_all else {} %}
+<div class="chip-row mb-4">
+  <a class="chip {{ 'is-active' if not sub }}" href="{{ url_for('inventory.category', category_id=cat._id, **qs_all) }}">Tudo <span>{{ total }}</span></a>
+  {% for s in cat.subcategories %}
+  <a class="chip {{ 'is-active' if sub == s }}" href="{{ url_for('inventory.category', category_id=cat._id, sub=s, **qs_all) }}">{{ s }} <span>{{ sub_counts.get(s, 0) }}</span></a>
+  {% endfor %}
+  {% for s, n in sub_counts.items() if s and s not in cat.subcategories %}
+  <a class="chip {{ 'is-active' if sub == s }}" href="{{ url_for('inventory.category', category_id=cat._id, sub=s, **qs_all) }}">{{ s }} <span>{{ n }}</span></a>
+  {% endfor %}
+</div>
+
+{% if items %}
+<div class="equipment-grid">
+  {% for e in items %}{{ equipment_card(e, cat) }}{% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <i class="bi {{ cat.icon }}"></i>
+  <p>Nada aqui{{ ' em ' ~ sub if sub }} ainda.</p>
+  <a href="{{ url_for('equipment.new', category=cat._id) }}" class="btn btn-outline-primary btn-sm">Cadastrar o primeiro</a>
+</div>
+{% endif %}
+
+<div class="text-center mt-4 small">
+  {% if show_all %}
+  <a href="{{ url_for('inventory.category', category_id=cat._id, sub=sub or None) }}">Esconder vendidos/descartados</a>
+  {% elif hidden_inactive %}
+  <a href="{{ url_for('inventory.category', category_id=cat._id, sub=sub or None, all=1) }}">Mostrar {{ hidden_inactive }} vendido{{ 's' if hidden_inactive > 1 }}/descartado{{ 's' if hidden_inactive > 1 }}</a>
+  {% endif %}
+</div>
+{% endblock %}

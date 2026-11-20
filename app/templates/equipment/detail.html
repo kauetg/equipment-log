@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, condition_badge, equipment_photo with context %}
+{% block title %}{{ e.name }} — Equipment Log{% endblock %}
+{% block content %}
+{% if category %}
+<a href="{{ url_for('inventory.category', category_id=category._id) }}" class="back-link"><i class="bi bi-chevron-left"></i> {{ category.name }}</a>
+{% else %}
+<a href="{{ url_for('inventory.index') }}" class="back-link"><i class="bi bi-chevron-left"></i> Inventário</a>
+{% endif %}
+
+<div class="detail-header">
+  <div class="detail-photo">
+    {% if e.photo %}
+    <a href="{{ file_url(e.photo) }}" target="_blank">{{ equipment_photo(e, category, size='full') }}</a>
+    {% else %}
+    {{ equipment_photo(e, category) }}
+    {% endif %}
+  </div>
+  <div class="detail-info">
+    <div class="detail-eyebrow">
+      <span class="cat-dot" style="background: {{ category.color or '#999' }}"></span>
+      {{ category.name or 'Sem categoria' }}{% if e.subcategory %} · {{ e.subcategory }}{% endif %}
+    </div>
+    <h1 class="h2 mb-1">{{ e.name }}</h1>
+    <div class="text-muted mb-2">{{ [e.brand, e.model]|select|join(' · ') }}</div>
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      {{ status_badge(e.status) }}
+      {{ condition_badge(e.condition) }}
+    </div>
+    <dl class="detail-facts">
+      <div><dt>Nº de série</dt><dd>{{ e.serial_number or '—' }}</dd></div>
+      <div><dt>Aquisição</dt><dd>{{ e.acquired_at|date_br }}</dd></div>
+      <div><dt>Custo total</dt><dd>{{ e.total_cost|usd }}</dd></div>
+    </dl>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{{ url_for('equipment.edit', equipment_id=e._id) }}" class="btn btn-primary btn-sm"><i class="bi bi-pencil"></i> Editar</a>
+      <a href="{{ url_for('equipment.new_maintenance', equipment_id=e._id) }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-tools"></i> Manutenção</a>
+      <form method="post" action="{{ url_for('equipment.delete', equipment_id=e._id) }}"
+            data-confirm="Excluir “{{ e.name }}”? Apaga também fotos, documentos, manutenções e pedidos que só tenham este item.">
+        <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> Excluir</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<ul class="nav nav-pills detail-tabs mb-3" role="tablist">
+  <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-overview" type="button">Visão geral</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-maintenance" type="button">Manutenção <span class="tab-count">{{ logs|length }}</span></button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-orders" type="button">Compras/Vendas <span class="tab-count">{{ orders|length }}</span></button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-files" type="button">Arquivos <span class="tab-count">{{ e.documents|length + e.gallery|length }}</span></button></li>
+</ul>
+
+<div class="tab-content">
+  <div class="tab-pane fade show active" id="tab-overview">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="panel">
+          <h2 class="panel-title">Especificações</h2>
+          {% if e.specs %}
+          <dl class="spec-list">
+            {% for key, value in e.specs.items() %}
+            {% set f = spec_labels.get(key, {}) %}
+            <div><dt>{{ f.label or key }}</dt><dd>{{ value|int if value is number and value == value|int else value }} {{ f.unit or '' }}</dd></div>
+            {% endfor %}
+          </dl>
+          {% endif %}
+          {% if e.specs_text %}<p class="prewrap small mb-0">{{ e.specs_text }}</p>{% endif %}
+          {% if not e.specs and not e.specs_text %}<p class="text-muted small mb-0">Nenhuma especificação.</p>{% endif %}
+          {% if e.exif_keys %}
+          <div class="small mt-2 text-muted">🌱 EXIF: {% for k in e.exif_keys %}<code>{{ k }}</code>{{ ', ' if not loop.last }}{% endfor %}</div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="panel">
+          <h2 class="panel-title">Notas</h2>
+          <p class="prewrap mb-0 {{ 'text-muted small' if not e.notes }}">{{ e.notes or 'Sem observações.' }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane fade" id="tab-maintenance">
+    {% for log in logs %}
+    <div class="panel mb-2">
+      <div class="d-flex justify-content-between"><strong>{{ log.title }}</strong><span class="text-muted small">{{ log.date|date_br }}</span></div>
+      <div class="small">{{ log.description }}</div>
+      <div class="mt-1">{{ condition_badge(log.resulting_condition) }}</div>
+    </div>
+    {% else %}
+    <div class="placeholder-card"><i class="bi bi-cone-striped"></i>Log de manutenção (timeline, fotos, condição resultante) chega na fase 3.</div>
+    {% endfor %}
+  </div>
+
+  <div class="tab-pane fade" id="tab-orders">
+    {% for o in orders %}
+    <div class="panel mb-2 order-row">
+      <div>
+        <span class="badge text-bg-light border">{{ ORDER_KINDS.get(o.kind, o.kind) }}</span>
+        <strong class="ms-1">{{ o.counterparty or '—' }}</strong>
+        {% if o.platform %}<span class="text-muted small">· {{ o.platform }}</span>{% endif %}
+        <div class="small text-muted">{{ o.date|date_br }}{% if o.other_items %} · pedido com mais {{ o.other_items }} {{ 'item' if o.other_items == 1 else 'itens' }}{% endif %}{% if o.notes %} · {{ o.notes }}{% endif %}</div>
+      </div>
+      <div class="order-amount">{{ o.item_amount|usd }}</div>
+    </div>
+    {% else %}
+    <p class="text-muted small">Nenhuma compra registrada. Pedidos (com vários itens e recibos) chegam na fase 3.</p>
+    {% endfor %}
+  </div>
+
+  <div class="tab-pane fade" id="tab-files">
+    {% if e.documents %}
+    <ul class="list-group mb-3">
+      {% for d in e.documents %}
+      <a class="list-group-item list-group-item-action d-flex align-items-center gap-2" href="{{ file_url(d) }}" target="_blank">
+        <i class="bi {{ 'bi-file-earmark-image' if is_image(d) else 'bi-file-earmark-pdf' }} text-primary"></i>
+        <span class="badge text-bg-light border">{{ DOCUMENT_KINDS.get(d.kind, d.kind) }}</span>
+        <span class="text-truncate">{{ d.name }}</span>
+      </a>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-muted small">Nenhum documento. Adicione garantia ou manual em <a href="{{ url_for('equipment.edit', equipment_id=e._id) }}">Editar</a>.</p>
+    {% endif %}
+    <div class="placeholder-card"><i class="bi bi-images"></i>Galeria de fotos extras chega na fase 3.</div>
+  </div>
+</div>
+{% endblock %}

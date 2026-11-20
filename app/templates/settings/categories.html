@@ -1,30 +1,44 @@
 {% extends "base.html" %}
 {% block title %}Categorias — Equipment Log{% endblock %}
 {% block content %}
-<div class="d-flex align-items-center gap-2 mb-1">
-  <i class="bi bi-tags page-icon"></i>
-  <h1 class="h3 mb-0">Categorias</h1>
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div class="d-flex align-items-center gap-2">
+    <i class="bi bi-tags page-icon"></i>
+    <h1 class="h3 mb-0">Categorias</h1>
+  </div>
+  <a href="{{ url_for('settings.new_category') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Categoria</a>
 </div>
-<p class="text-muted small mb-4">Só leitura por enquanto — edição (nome, ícone, cor, ordem, subcategorias e campos de spec) chega na fase 2.</p>
 
 <div class="list-group settings-list">
   {% for cat in categories %}
-  <div class="list-group-item">
-    <div class="d-flex align-items-center gap-2">
-      <span class="cat-dot" style="background: {{ cat.color }}"></span>
-      <i class="bi {{ cat.icon }}"></i>
-      <strong>{{ cat.name }}</strong>
-      {% if cat.has_exif %}<span class="badge text-bg-light border" title="Mostra o campo de chaves EXIF (media_logger)">🌱 EXIF</span>{% endif %}
+  <div class="list-group-item d-flex gap-2 align-items-start">
+    <div class="order-buttons">
+      <form method="post" action="{{ url_for('settings.move_category', category_id=cat._id) }}">
+        <button class="btn btn-link btn-sm p-0" name="direction" value="up" title="Subir" {{ 'disabled' if loop.first }}><i class="bi bi-chevron-up"></i></button>
+      </form>
+      <form method="post" action="{{ url_for('settings.move_category', category_id=cat._id) }}">
+        <button class="btn btn-link btn-sm p-0" name="direction" value="down" title="Descer" {{ 'disabled' if loop.last }}><i class="bi bi-chevron-down"></i></button>
+      </form>
     </div>
-    <div class="small text-muted mt-1">
-      <span class="me-3"><i class="bi bi-diagram-2"></i> {{ cat.subcategories|join(', ') if cat.subcategories else '—' }}</span>
-      <span><i class="bi bi-sliders"></i>
-        {% for f in cat.spec_fields %}{{ f.label }} ({{ f.unit }}){{ ', ' if not loop.last }}{% else %}sem specs{% endfor %}
-      </span>
+    <div class="flex-grow-1 min-width-0">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span class="cat-dot" style="background: {{ cat.color }}"></span>
+        <i class="bi {{ cat.icon }}"></i>
+        <strong>{{ cat.name }}</strong>
+        <span class="text-muted small">{{ cat.equipment_count }} {{ 'item' if cat.equipment_count == 1 else 'itens' }}</span>
+        {% if cat.has_exif %}<span class="badge text-bg-light border" title="Mostra o campo de chaves EXIF (media_logger)">🌱 EXIF</span>{% endif %}
+      </div>
+      <div class="small text-muted mt-1">
+        <span class="me-3"><i class="bi bi-diagram-2"></i> {{ cat.subcategories|join(', ') if cat.subcategories else '—' }}</span>
+        <span><i class="bi bi-sliders"></i>
+          {% for f in cat.spec_fields %}{{ f.label }}{% if f.unit %} ({{ f.unit }}){% endif %}{{ ', ' if not loop.last }}{% else %}sem specs{% endfor %}
+        </span>
+      </div>
     </div>
+    <a href="{{ url_for('settings.edit_category', category_id=cat._id) }}" class="btn btn-sm btn-outline-primary" title="Editar"><i class="bi bi-pencil"></i></a>
   </div>
   {% else %}
-  <div class="list-group-item text-muted">Nenhuma categoria. Rode <code>python scripts/seed_household.py --categories</code>.</div>
+  <div class="list-group-item text-muted">Nenhuma categoria. Rode <code>python scripts/seed_household.py --categories</code> ou crie uma.</div>
   {% endfor %}
 </div>
 {% endblock %}

@@ -1,5 +1,8 @@
 """Queries de leitura do inventário (home / categoria)."""
 
+# Fora do inventário "em uso": não contam nos cards nem aparecem na categoria por padrão
+INACTIVE_STATUSES = ("sold", "discarded")
+
 
 def get_categories_with_counts(db, household_id):
     """Categorias na ordem configurada, cada uma com `count` (itens não descartados/vendidos)
@@ -10,7 +13,7 @@ def get_categories_with_counts(db, household_id):
         row["_id"]: row
         for row in db.equipment.aggregate(
             [
-                {"$match": {"household_id": household_id, "status": {"$nin": ["sold", "discarded"]}}},
+                {"$match": {"household_id": household_id, "status": {"$nin": list(INACTIVE_STATUSES)}}},
                 {
                     "$group": {
                         "_id": "$category_id",

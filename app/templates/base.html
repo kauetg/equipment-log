@@ -72,6 +72,15 @@
   <script>
     // Evita duplo submit (mesma lógica do guardiola): trava os botões de submit assim que
     // o form é enviado, a menos que alguma validação do próprio form tenha cancelado o evento.
+    // <form data-confirm="..."> pede confirmação antes de enviar (excluir etc.). Registrado
+    // em capture pra rodar antes do trava-botões abaixo.
+    document.addEventListener('submit', function (event) {
+      const form = event.target;
+      if (form instanceof HTMLFormElement && form.dataset.confirm && !window.confirm(form.dataset.confirm)) {
+        event.preventDefault();
+      }
+    }, true);
+
     document.addEventListener('submit', function (event) {
       const form = event.target;
       if (!(form instanceof HTMLFormElement) || event.defaultPrevented) return;
