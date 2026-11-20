@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "equipment-log",
+      "runtimeExecutable": ".venv/bin/python",
+      "runtimeArgs": ["run.py"],
+      "port": 5004,
+      "autoPort": true
+    }
+  ]
+}

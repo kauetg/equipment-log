@@ -1,0 +1,14 @@
+{
+  "name": "Equipment Log",
+  "short_name": "Equipment",
+  "description": "Inventário, manutenção e compras de equipamentos",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fbfbf2",
+  "theme_color": "#1a9c8a",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/static/img/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

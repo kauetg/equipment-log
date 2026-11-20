@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Inventário — Equipment Log{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+  <div>
+    <h1 class="h3 mb-1">Inventário</h1>
+    <div class="text-muted small">
+      {{ totals.count }} {{ 'item' if totals.count == 1 else 'itens' }} em uso ·
+      {{ totals.invested|usd }} investidos
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('equipment.index') }}" class="btn btn-outline-primary"><i class="bi bi-search"></i> Buscar</a>
+    <a href="{{ url_for('equipment.new') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Equipamento</a>
+  </div>
+</div>
+
+{% if categories %}
+<div class="category-grid">
+  {% for cat in categories %}
+  <a class="category-card" href="{{ url_for('inventory.category', category_id=cat._id) }}" style="--cat-color: {{ cat.color }}">
+    <div class="category-card-icon"><i class="bi {{ cat.icon }}"></i></div>
+    <div class="category-card-name">{{ cat.name }}</div>
+    <div class="category-card-meta">
+      <span>{{ cat.count }} {{ 'item' if cat.count == 1 else 'itens' }}</span>
+      {% if cat.invested %}<span>{{ cat.invested|usd }}</span>{% endif %}
+    </div>
+    {% if cat.subcategories %}
+    <div class="category-card-subs">{{ cat.subcategories|join(' · ') }}</div>
+    {% endif %}
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="placeholder-card">
+  Nenhuma categoria ainda. Rode <code>python scripts/seed_household.py --categories</code>.
+</div>
+{% endif %}
+
+<h2 class="h5 mt-5 mb-3">Atenção</h2>
+<div class="placeholder-grid">
+  <div class="placeholder-card"><i class="bi bi-exclamation-triangle"></i>Itens em “Sinais de Uso” ou “Quebrado” <span class="phase-hint">fase 3</span></div>
+  <div class="placeholder-card"><i class="bi bi-shield-check"></i>Garantias vencendo <span class="phase-hint">fase 5</span></div>
+  <div class="placeholder-card"><i class="bi bi-link-45deg"></i>Pedidos sem pagamento no Guardiola <span class="phase-hint">🌱 fase 6</span></div>
+</div>
+{% endblock %}

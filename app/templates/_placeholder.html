@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — Equipment Log{% endblock %}
+{% block content %}
+{% if back %}
+<a href="{{ back[1] }}" class="back-link"><i class="bi bi-chevron-left"></i> {{ back[0] }}</a>
+{% endif %}
+<div class="d-flex align-items-center gap-2 mb-1">
+  <i class="bi {{ icon }} page-icon"></i>
+  <h1 class="h3 mb-0">{{ title }}</h1>
+  <span class="badge rounded-pill phase-badge">Fase {{ phase }}</span>
+</div>
+{% if subtitle %}<p class="text-muted">{{ subtitle }}</p>{% endif %}
+
+<div class="placeholder-card mt-3">
+  <div class="placeholder-head"><i class="bi bi-cone-striped"></i> Em construção — o que vai ter aqui:</div>
+  <ul class="mb-0">
+    {% for item in planned %}<li>{{ item }}</li>{% endfor %}
+  </ul>
+</div>
+{% endblock %}
