@@ -16,6 +16,18 @@ cp .env.example .env        # preencher MONGO_URI (mesmo cluster do guardiola) e
 
 `scripts/seed_household.py --categories` só completa as categorias que faltam.
 
+### Import do AppSheet
+
+```bash
+.venv/bin/python scripts/import_appsheet.py "Camera Log.xlsx"                                  # dry-run
+.venv/bin/python scripts/import_appsheet.py "Camera Log.xlsx" --files ~/Downloads/camera_log --apply
+```
+
+Idempotente (por `legacy_id`): rodar de novo não duplica nem sobrescreve o que foi editado no app,
+só cria o que falta e anexa arquivos ainda não anexados. `--files` é a pasta do app baixada do
+Drive (com `Equipamentos_Files_/`, `Equipamentos_Images/`, `Transacoes_Files_/`,
+`Transacoes_Images/`, `Log_Manutencao_Images/`). Normalização de lojas no topo do script.
+
 ## Estado
 
 - ✅ Fase 1 — esqueleto: login, conta, PWA, storage GridFS (`/files/<id>`), stubs de integração.
@@ -38,5 +50,7 @@ cp .env.example .env        # preencher MONGO_URI (mesmo cluster do guardiola) e
   - galeria de fotos por equipamento (promover a capa) e aba Arquivos juntando documentos,
     notas fiscais e fotos de manutenção;
   - home lista itens em atenção e compras sem nota fiscal.
-- Import do AppSheet (fase 4) e relatórios ainda pendentes.
+- ✅ Fase 4 — import do AppSheet: 57 equipamentos, 34 pedidos (45 transações), 17 manutenções
+  importados. Faltam os ~78 arquivos (fotos/recibos/manuais): rodar de novo com `--files`.
+- Relatórios (fase 5) ainda pendentes.
 - 🌱 Integrações (guardiola, media_logger): `app/services/integrations/`, desligadas por flag no `.env`.

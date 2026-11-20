@@ -76,13 +76,17 @@ def save_upload(file_storage, household_id, kind=None):
     Devolve a file ref, ou None se o campo veio vazio."""
     if not file_storage or not file_storage.filename:
         return None
-
-    storage = get_storage()
     data = file_storage.read()
     if not data:
         return None
-    name = secure_filename(file_storage.filename) or "arquivo"
-    content_type = file_storage.mimetype or "application/octet-stream"
+    return save_bytes(data, file_storage.filename, file_storage.mimetype, household_id, kind=kind)
+
+
+def save_bytes(data, filename, content_type, household_id, kind=None):
+    """Mesmo tratamento do save_upload, a partir de bytes (usado pelo import do AppSheet)."""
+    storage = get_storage()
+    name = secure_filename(filename) or "arquivo"
+    content_type = content_type or "application/octet-stream"
 
     processed = process_image(data) if content_type.startswith("image/") else None
     if processed:

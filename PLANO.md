@@ -208,7 +208,7 @@ run.py  Procfile  requirements.txt   # + Pillow, openpyxl
 1. ✅ **Esqueleto** (feito 2026-11-20): copiar do guardiola (auth, household, base.html, theme, PWA), seed das 7 categorias.
 2. ✅ **Inventário + CRUD de equipamento** (feito 2026-11-21) com specs por categoria e foto (GridFS).
 3. ✅ **Detalhe com abas** (feito 2026-11-21) + manutenção + pedidos com N itens + anexos múltiplos.
-4. **Import do AppSheet** (xlsx + pasta de arquivos).
+4. ✅ **Import do AppSheet** (dados importados 2026-11-21; arquivos pendentes) (xlsx + pasta de arquivos).
 5. Extras: relatórios, garantias vencendo, QR code por item (etiqueta no case → abre o detalhe), R2 se o GridFS apertar.
 6. **Integração guardiola** (§8.1) — a mais importante.
 7. **Integração media_logger** (§8.2).
