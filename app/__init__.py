@@ -2,6 +2,7 @@ import os
 
 from flask import Flask, current_app, send_from_directory
 from markupsafe import Markup, escape
+from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_login import current_user
 
 from app.config import (
@@ -23,6 +24,11 @@ MONTHS_PT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out
 def create_app(config_object=Config):
     app = Flask(__name__)
     app.config.from_object(config_object)
+
+    if app.config.get("BEHIND_PROXY"):
+        # Atrás de nginx/Caddy/Cloudflare Tunnel no Raspberry: confia no X-Forwarded-* pra
+        # url_for e redirects saírem com https e o host público.
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
     init_extensions(app)
     register_blueprints(app)
@@ -93,6 +99,12 @@ def _register_pwa_routes(app):
     def pwa_manifest():
         return send_from_directory(
             app.static_folder, "manifest.json", mimetype="application/manifest+json"
+        )
+
+    @app.route("/favicon.ico")
+    def pwa_favicon():
+        return send_from_directory(
+            os.path.join(app.static_folder, "img"), "favicon.ico", mimetype="image/vnd.microsoft.icon"
         )
 
     @app.route("/service-worker.js")

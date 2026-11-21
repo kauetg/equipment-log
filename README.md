@@ -58,7 +58,30 @@ O app se chama **Pataka**. Logos em `app/static/img/` (os dois já trazem o nome
 `logo_horizontal.png` no navbar e no login, `logo.png` (empilhado) grande na home. Se faltar um,
 usa o outro; sem nenhum, cai no `icon.svg` + "Pataka" em texto. Cores do tema (`theme.css`) tiradas
 do logo: verde `#027f6c`, verde claro `#3a9b88`, roxo `#444076`.
-O favicon/ícone do PWA ainda é o `icon.svg` (falta o glyph).
+
+Ícones do PWA/favicon (`icon-192/512.png`, `icon-maskable-512.png`, `apple-touch-icon.png`,
+`favicon.ico`) são gerados do `glyph.png` por `scripts/make_icons.py`. O glyph atual é
+provisório: o `logo.png` sem o nome (palmeiras + telhado). Com o glifo definitivo:
+
+```bash
+python scripts/make_icons.py --glyph caminho/do/glifo.png
+```
+
+e suba o `CACHE_VERSION` em `static/service-worker.js` pro PWA instalado atualizar.
+
+## Deploy no Raspberry Pi
+
+1. No Pi: `git clone` (conta github-pessoal) em `~/pataka`, depois
+   `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`.
+2. Copie o `.env` (Mongo Atlas, `SECRET_KEY`, `CLOUDINARY_URL`) — ele não vai pro git. Se for
+   ficar atrás de proxy HTTPS, acrescente `BEHIND_PROXY=1` e `COOKIE_SECURE=1`.
+3. `deploy/pataka.service` → `/etc/systemd/system/` (ajuste `User` e caminhos), depois
+   `sudo systemctl enable --now pataka`. Sobe o gunicorn em `127.0.0.1:5006`.
+4. HTTPS na frente (nginx, Caddy, Cloudflare Tunnel, Tailscale Serve…). **O PWA só instala via
+   HTTPS** (ou `localhost`); por `http://192.168.x.x` o celular só cria um atalho.
+5. Atualizar: `git pull && .venv/bin/pip install -r requirements.txt && sudo systemctl restart pataka`.
+
+O Pi não precisa do `data/` — fotos e arquivos ficam no Cloudinary, dados no Atlas.
 
 ## Estado
 

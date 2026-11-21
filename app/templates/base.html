@@ -7,9 +7,14 @@
 
   <link rel="manifest" href="{{ url_for('pwa_manifest') }}">
   <meta name="theme-color" content="#027f6c">
-  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/icon.svg') }}">
-  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/icon.svg') }}">
+  <meta name="application-name" content="Pataka">
+  <link rel="icon" href="{{ url_for('pwa_favicon') }}" sizes="48x48">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
+  <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='img/icon-192.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Pataka">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">

@@ -16,6 +16,9 @@ class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY")
     PERMANENT_SESSION_LIFETIME = timedelta(days=30)
     REMEMBER_COOKIE_DURATION = timedelta(days=30)
+    # Produção (Raspberry atrás de proxy HTTPS) — ver README "Deploy no Raspberry Pi"
+    BEHIND_PROXY = _flag("BEHIND_PROXY")
+    SESSION_COOKIE_SECURE = REMEMBER_COOKIE_SECURE = _flag("COOKIE_SECURE")
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50 MB por request (manual em PDF pode ser grande)
 
     # Arquivos (fotos, recibos, manuais) — ver services/storage.py. Só arquivos; dados ficam no Mongo.
