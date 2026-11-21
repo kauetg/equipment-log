@@ -643,6 +643,12 @@ a:hover { color: var(--brand-active); }
 }
 .spotlight-empty > i { font-size: 2.5rem; margin-bottom: 0.5rem; }
 .spotlight-empty .bi-star-fill { color: #ffc94d; }
+/* desktop: o carrossel ocupa a altura toda da coluna da esquerda (logo até os atalhos) */
+@media (min-width: 992px) {
+  .home-top .spotlight { flex: 1; min-height: 380px; }
+  .home-top .spotlight .carousel-inner { position: absolute; inset: 0; }
+  .home-top .spotlight-slide { height: 100%; }
+}
 @media (max-width: 575.98px) {
   .spotlight { border-radius: 1rem; }
   .spotlight-slide { height: 300px; }

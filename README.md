@@ -71,15 +71,18 @@ e suba o `CACHE_VERSION` em `static/service-worker.js` pro PWA instalado atualiz
 
 ## Deploy no Raspberry Pi
 
-1. No Pi: `git clone` (conta github-pessoal) em `~/pataka`, depois
-   `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`.
-2. Copie o `.env` (Mongo Atlas, `SECRET_KEY`, `CLOUDINARY_URL`) — ele não vai pro git. Se for
-   ficar atrás de proxy HTTPS, acrescente `BEHIND_PROXY=1` e `COOKIE_SECURE=1`.
-3. `deploy/pataka.service` → `/etc/systemd/system/` (ajuste `User` e caminhos), depois
-   `sudo systemctl enable --now pataka`. Sobe o gunicorn em `127.0.0.1:5006`.
-4. HTTPS na frente (nginx, Caddy, Cloudflare Tunnel, Tailscale Serve…). **O PWA só instala via
-   HTTPS** (ou `localhost`); por `http://192.168.x.x` o celular só cria um atalho.
-5. Atualizar: `git pull && .venv/bin/pip install -r requirements.txt && sudo systemctl restart pataka`.
+1. No Pi: `git clone` (conta github-pessoal) em `~/equipment-log`, depois
+   `python3 -m venv venv && venv/bin/pip install -r requirements.txt`.
+2. Copie o `.env` (Mongo Atlas, `SECRET_KEY`, `CLOUDINARY_URL`) — ele não vai pro git — e
+   acrescente `BEHIND_PROXY=1` e `COOKIE_SECURE=1` (o Funnel serve em HTTPS).
+3. `sudo cp deploy/equipment-log.service /etc/systemd/system/ && sudo systemctl daemon-reload &&
+   sudo systemctl enable --now equipment-log`. Sobe o gunicorn em `127.0.0.1:5006`.
+4. HTTPS público pelo Tailscale Funnel: `sudo tailscale funnel --bg 5006` → fica em
+   `https://<pi>.<tailnet>.ts.net`. O `--bg` grava a config no tailscaled (sobrevive a reboot,
+   não precisa de outro service). O Funnel só publica nas portas 443, 8443 e 10000: se a 443
+   já for de outro app (guardiola), use `sudo tailscale funnel --bg --https=8443 5006`.
+   Conferir com `tailscale funnel status`. **O PWA só instala via HTTPS.**
+5. Atualizar: `git pull && venv/bin/pip install -r requirements.txt && sudo systemctl restart equipment-log`.
 
 O Pi não precisa do `data/` — fotos e arquivos ficam no Cloudinary, dados no Atlas.
 

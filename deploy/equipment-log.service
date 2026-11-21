@@ -1,0 +1,22 @@
+# systemd — Pataka no Raspberry Pi (exposto pela internet via Tailscale Funnel).
+# Instale com:
+#   sudo cp deploy/equipment-log.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now equipment-log
+#   journalctl -u equipment-log -f      # logs
+# Depois: sudo tailscale funnel --bg 5006   (ver README "Deploy no Raspberry Pi")
+[Unit]
+Description=Pataka (Flask)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=kauesenger
+WorkingDirectory=/home/kauesenger/equipment-log
+EnvironmentFile=/home/kauesenger/equipment-log/.env
+# 127.0.0.1: só o Tailscale (Funnel/Serve) acessa. 1 worker: o Pi Zero tem 512 MB de RAM
+ExecStart=/home/kauesenger/equipment-log/venv/bin/gunicorn run:app --bind 127.0.0.1:5006 --workers 1 --threads 4 --timeout 120
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
