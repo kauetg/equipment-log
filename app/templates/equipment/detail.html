@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import status_badge, condition_badge, equipment_photo, maintenance_entry, attachment_strip with context %}
+{% from "_macros.html" import status_badge, condition_badge, equipment_photo, maintenance_entry, attachment_strip, missing_actions with context %}
 {% block title %}{{ e.name }} — Equipment Log{% endblock %}
 {% block content %}
 {% if category %}
@@ -42,6 +42,13 @@
     </div>
   </div>
 </div>
+
+{% if missing %}
+<div class="complete-panel mb-3">
+  <div class="complete-panel-title"><i class="bi bi-ui-checks"></i> Completar cadastro <span class="text-muted fw-normal">— falta {{ missing|length }}</span></div>
+  {{ missing_actions(e, missing) }}
+</div>
+{% endif %}
 
 <ul class="nav nav-pills detail-tabs mb-3" role="tablist">
   <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-overview" type="button">Visão geral</button></li>

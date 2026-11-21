@@ -23,7 +23,10 @@
 
 {% macro equipment_card(e, category=None) -%}
 <a class="equipment-card" href="{{ url_for('equipment.detail', equipment_id=e._id) }}">
-  <div class="equipment-card-photo">{{ equipment_photo(e, category) }}</div>
+  <div class="equipment-card-photo">
+    {{ equipment_photo(e, category) }}
+    {% if e._missing %}<span class="incomplete-dot" title="Falta: {% for k in e._missing %}{{ CHECKS_BY_KEY[k].label|lower }}{{ ', ' if not loop.last }}{% endfor %}"></span>{% endif %}
+  </div>
   <div class="equipment-card-body">
     <div class="equipment-card-name">{{ e.name }}</div>
     <div class="equipment-card-sub">{{ [e.brand, e.model]|select|join(' · ') or e.subcategory or '—' }}</div>
@@ -76,4 +79,18 @@
     {{ attachment_strip(log.photos) }}
   </div>
 </div>
+{%- endmacro %}
+
+{# Pílulas "o que falta", cada uma levando pra onde resolve #}
+{% macro missing_actions(e, missing) -%}
+{% if missing %}
+<div class="missing-actions">
+  {% for key in missing %}
+  {% set c = CHECKS_BY_KEY[key] %}
+  <a class="missing-pill" href="{{ url_for('orders.new', equipment=e._id) if c.fix == 'order' else url_for('equipment.edit', equipment_id=e._id) }}">
+    <i class="bi {{ c.icon }}"></i> {{ c.label }}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
 {%- endmacro %}

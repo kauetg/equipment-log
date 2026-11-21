@@ -5,6 +5,7 @@ from flask import Blueprint, abort, current_app, render_template, request
 from flask_login import current_user, login_required
 
 from app.routes._helpers import oid_or_404
+from app.services.completeness import CHECKS, CHECKS_BY_KEY, build_context, get_pending, missing_for
 from app.services.inventory_queries import INACTIVE_STATUSES, get_categories_with_counts
 
 inventory_bp = Blueprint("inventory", __name__)
@@ -32,8 +33,14 @@ def index():
     no_receipt = db.orders.count_documents(
         {"household_id": current_user.household_id, "kind": {"$in": ["purchase", "upgrade"]}, "receipts": {"$size": 0}}
     )
+    incomplete = len(get_pending(db, current_user.household_id)[0])
     return render_template(
-        "inventory/index.html", categories=categories, totals=totals, attention=attention, no_receipt=no_receipt
+        "inventory/index.html",
+        categories=categories,
+        totals=totals,
+        attention=attention,
+        no_receipt=no_receipt,
+        incomplete=incomplete,
     )
 
 
@@ -54,6 +61,9 @@ def category(category_id):
         base["status"] = {"$nin": list(INACTIVE_STATUSES)}
 
     items = list(current_app.db.equipment.find(base).sort("name", 1))
+    ctx = build_context(current_app.db, current_user.household_id)
+    for e in items:
+        e["_missing"] = missing_for(e, ctx)
 
     # Uma seção por subcategoria (estilo "agrupado por país" do program-planner): na ordem
     # configurada na categoria, depois subcategorias soltas (digitadas/importadas) em ordem
@@ -85,6 +95,29 @@ def category(category_id):
         total=len(items),
         show_all=show_all,
         hidden_inactive=hidden_inactive,
+    )
+
+
+@inventory_bp.route("/pending")
+@login_required
+def pending():
+    """Itens com cadastro incompleto. ?falta=foto|compra|data|subcategoria|marca filtra."""
+    db = current_app.db
+    all_items, counts = get_pending(db, current_user.household_id)
+    falta = request.args.get("falta", "")
+    if falta not in CHECKS_BY_KEY:
+        falta = ""
+    items = [e for e in all_items if falta in e["_missing"]] if falta else all_items
+    categories = {c["_id"]: c for c in db.categories.find({"household_id": current_user.household_id})}
+    return render_template(
+        "inventory/pending.html",
+        items=items,
+        counts=counts,
+        total=len(all_items),
+        falta=falta,
+        categories=categories,
+        CHECKS=CHECKS,
+        CHECKS_BY_KEY=CHECKS_BY_KEY,
     )
 
 

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_macros.html" import equipment_photo, missing_actions with context %}
+{% block title %}Pendências — Equipment Log{% endblock %}
+{% block content %}
+<a href="{{ url_for('inventory.index') }}" class="back-link"><i class="bi bi-chevron-left"></i> Inventário</a>
+<div class="d-flex align-items-center gap-2 mb-1">
+  <i class="bi bi-ui-checks page-icon"></i>
+  <h1 class="h3 mb-0">Pendências</h1>
+  <span class="badge rounded-pill text-bg-light border">{{ total }}</span>
+</div>
+<p class="text-muted small mb-3">Itens com cadastro incompleto. Some daqui sozinho quando você preenche o que falta.</p>
+
+{% if total %}
+<div class="chip-row mb-4">
+  <a class="chip {{ 'is-active' if not falta }}" href="{{ url_for('inventory.pending') }}">Tudo <span>{{ total }}</span></a>
+  {% for c in CHECKS if counts[c.key] %}
+  <a class="chip {{ 'is-active' if falta == c.key }}" href="{{ url_for('inventory.pending', falta=c.key) }}"><i class="bi {{ c.icon }}"></i> Sem {{ c.label|lower }} <span>{{ counts[c.key] }}</span></a>
+  {% endfor %}
+</div>
+
+<div class="list-group">
+  {% for e in items %}
+  {% set cat = categories.get(e.category_id, {}) %}
+  <div class="list-group-item pending-row">
+    <a class="equipment-row-photo" href="{{ url_for('equipment.detail', equipment_id=e._id) }}">{{ equipment_photo(e, cat) }}</a>
+    <div class="min-width-0 flex-grow-1">
+      <a class="fw-semibold text-reset text-decoration-none" href="{{ url_for('equipment.detail', equipment_id=e._id) }}">{{ e.name }}</a>
+      <div class="small text-muted">{{ cat.name or '—' }}{% if e.subcategory %} · {{ e.subcategory }}{% endif %}</div>
+      {{ missing_actions(e, e._missing) }}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state"><i class="bi bi-check2-circle"></i><p>Tudo completo por aqui. 🎉</p></div>
+{% endif %}
+{% endblock %}

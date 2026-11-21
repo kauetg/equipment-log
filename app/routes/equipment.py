@@ -12,6 +12,7 @@ from app.config import (
     ORDER_KINDS,
 )
 from app.routes._helpers import oid_or_404, parse_date, parse_number
+from app.services.completeness import build_context, missing_for
 from app.services.orders import sync_after_order_change
 from app.services.integrations.media_logger import exif_key
 from app.services.storage import delete_ref, external_ref, save_upload
@@ -268,12 +269,20 @@ def new():
             order["_id"] = db.orders.insert_one(order).inserted_id
             sync_after_order_change(db, None, order)
 
+        if request.form.get("after") == "another":
+            # "Salvar e cadastrar outro": volta pro form vazio mantendo categoria/subcategoria
+            flash(f"“{fields['name']}” cadastrado — próximo!", "success")
+            return redirect(
+                url_for("equipment.new", category=fields["category_id"], sub=fields["subcategory"] or None)
+            )
         flash(f"“{fields['name']}” cadastrado.", "success")
         return redirect(url_for("equipment.detail", equipment_id=equipment_id))
 
     preset = {}
     if request.args.get("category"):
         preset["category_id"] = request.args["category"]
+    if request.args.get("sub"):
+        preset["subcategory"] = request.args["sub"]
     return render_template("equipment/form.html", **_form_context(categories, form=preset or None))
 
 
@@ -339,6 +348,7 @@ def detail(equipment_id):
         category=category,
         receipts=receipts,
         maintenance_photos=maintenance_photos,
+        missing=missing_for(equipment, build_context(db, current_user.household_id)),
         orders=orders,
         logs=logs,
         spec_labels=spec_labels,

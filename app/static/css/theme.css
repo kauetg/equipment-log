@@ -498,3 +498,37 @@ a:hover { color: var(--brand-active); }
 .sub-chips .chip { cursor: pointer; }
 .sub-chips .chip:hover { border-color: var(--cat-color); color: var(--cat-color); }
 .sub-chips .chip.is-active { background: var(--cat-color); border-color: var(--cat-color); color: #fff; }
+
+/* ===================== Pendências de cadastro ===================== */
+.missing-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.4rem; }
+.missing-pill {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  font-size: 0.78rem; font-weight: 700; text-decoration: none;
+  padding: 0.2rem 0.65rem; border-radius: 50rem;
+  border: 1px dashed color-mix(in srgb, var(--brand-orange) 55%, white);
+  color: color-mix(in srgb, var(--brand-orange) 80%, black);
+  background: color-mix(in srgb, var(--brand-orange) 7%, white);
+}
+.missing-pill:hover { background: var(--brand-orange); border-color: var(--brand-orange); color: #fff; }
+.pending-row { display: flex; align-items: flex-start; gap: 0.75rem; }
+.pending-row .equipment-row-photo { display: block; }
+.complete-panel {
+  background: #fff; border-radius: var(--bs-border-radius-lg);
+  border: 1px dashed color-mix(in srgb, var(--brand-orange) 45%, white);
+  padding: 0.75rem 1rem;
+}
+.complete-panel-title { font-weight: 700; color: var(--brand-navy); font-size: 0.92rem; }
+.complete-panel-title i { color: var(--brand-orange); }
+.equipment-card-photo { position: relative; }
+.incomplete-dot {
+  position: absolute; top: 0.5rem; right: 0.5rem;
+  width: 0.7rem; height: 0.7rem; border-radius: 50%;
+  background: var(--brand-orange); border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+.pending-card strong { color: var(--brand-navy); font-size: 1.1rem; }
+.form-actions { flex-wrap: wrap; }
+/* form de equipamento: Cancelar · Salvar e cadastrar outro · Cadastrar (o Cadastrar vem antes no HTML) */
+.equipment-form .form-actions .btn-link { order: 1; }
+.equipment-form .form-actions .btn-another { order: 2; }
+.equipment-form .form-actions .btn-main-submit { order: 3; }

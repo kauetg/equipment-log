@@ -50,6 +50,9 @@
 </div>
 {% endif %}
 <div class="placeholder-grid">
+  {% if incomplete %}
+  <a class="placeholder-card text-decoration-none pending-card" href="{{ url_for('inventory.pending') }}"><i class="bi bi-ui-checks"></i><strong>{{ incomplete }}</strong> {{ 'item incompleto' if incomplete == 1 else 'itens incompletos' }}<span class="phase-hint">foto, compra, data…</span></a>
+  {% endif %}
   {% if not attention %}
   <div class="placeholder-card"><i class="bi bi-emoji-smile"></i>Nada em “Sinais de Uso” ou “Quebrado”.</div>
   {% endif %}

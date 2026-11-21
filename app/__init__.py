@@ -10,6 +10,7 @@ from app.config import (
     Config,
 )
 from app.extensions import init_extensions
+from app.services.completeness import CHECKS, CHECKS_BY_KEY
 from app.routes import register_blueprints
 
 
@@ -35,6 +36,8 @@ def _register_context_processors(app):
             "MAINTENANCE_KINDS": MAINTENANCE_KINDS,
             "ORDER_KINDS": ORDER_KINDS,
             "DOCUMENT_KINDS": DOCUMENT_KINDS,
+            "CHECKS": CHECKS,
+            "CHECKS_BY_KEY": CHECKS_BY_KEY,
             "INTEGRATIONS": app.config["INTEGRATIONS"],
         }
         if current_user.is_authenticated:
