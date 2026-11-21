@@ -1,23 +1,115 @@
 {% extends "base.html" %}
-{% from "_macros.html" import equipment_photo, condition_badge with context %}
-{% block title %}Inventário — Equipment Log{% endblock %}
+{% from "_brand.html" import brand_logo with context %}
+{% block title %}Inventário — Pataka{% endblock %}
 {% block content %}
-<div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
-  <div>
-    <h1 class="h3 mb-1">Inventário</h1>
-    <div class="text-muted small">
-      {{ totals.count }} {{ 'item' if totals.count == 1 else 'itens' }} em uso ·
-      {{ totals.invested|usd }} investidos
+
+<div class="row g-4 align-items-stretch mb-5 home-top">
+  {# Lado esquerdo: marca grande + resumo (no mobile o logo já está no navbar) #}
+  <div class="col-lg-4 order-2 order-lg-1 d-flex">
+    <div class="home-hero w-100">
+      <div class="home-hero-logo d-none d-lg-block">{{ brand_logo('hero-logo', 'logo') }}</div>
+      <div class="dropdown home-hero-welcome">
+        <button class="btn btn-link dropdown-toggle home-welcome-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+          Olá, {{ current_user.name.split(' ')[0] }}
+        </button>
+        <div class="dropdown-menu user-dropdown-card">
+          {% include "_account_menu.html" %}
+        </div>
+      </div>
+      <div class="home-stats">
+        <div><strong>{{ totals.count }}</strong><span>{{ 'item em uso' if totals.count == 1 else 'itens em uso' }}</span></div>
+        <div><strong>{{ (totals.invested or 0)|usd(0) }}</strong><span>investidos</span></div>
+      </div>
+      <div class="d-flex gap-2 mt-3 w-100">
+        <a href="{{ url_for('equipment.new') }}" class="btn btn-primary flex-grow-1"><i class="bi bi-plus-lg"></i> Equipamento</a>
+        <a href="{{ url_for('equipment.index') }}" class="btn btn-outline-primary" title="Buscar"><i class="bi bi-search"></i><span class="d-lg-none"> Buscar</span></a>
+      </div>
+      {# Atalhos no lugar do navbar (só desktop — no mobile o navbar continua) #}
+      <nav class="home-shortcuts d-none d-lg-flex">
+        <a href="{{ url_for('orders.index') }}"><i class="bi bi-bag"></i>Compras</a>
+        <a href="{{ url_for('maintenance.index') }}"><i class="bi bi-tools"></i>Manutenção</a>
+        <a href="{{ url_for('reports.index') }}"><i class="bi bi-bar-chart-line"></i>Relatórios</a>
+        <a href="{{ url_for('settings.categories') }}"><i class="bi bi-tags"></i>Categorias</a>
+      </nav>
     </div>
   </div>
-  <div class="d-flex gap-2">
-    <a href="{{ url_for('equipment.index') }}" class="btn btn-outline-primary"><i class="bi bi-search"></i> Buscar</a>
-    <a href="{{ url_for('equipment.new') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Equipamento</a>
+
+  {# Lado direito: carrossel dos favoritos (ou sorteio, se ainda não tem nenhum) #}
+  <div class="col-lg-8 order-1 order-lg-2">
+    {% if spotlight %}
+    <div id="spotlight" class="carousel slide spotlight" data-bs-ride="carousel" data-bs-interval="6000">
+      {% if spotlight|length > 1 %}
+      <div class="carousel-indicators">
+        {% for e in spotlight %}
+        <button type="button" data-bs-target="#spotlight" data-bs-slide-to="{{ loop.index0 }}" class="{{ 'active' if loop.first }}" {{ 'aria-current=true' if loop.first }} aria-label="{{ e.name }}"></button>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div class="carousel-inner">
+        {% for e in spotlight %}
+        {% set src = file_url(e.photo) %}
+        <a class="carousel-item spotlight-slide {{ 'active' if loop.first }}" href="{{ url_for('equipment.detail', equipment_id=e._id) }}">
+          <span class="spotlight-bg" style="background-image: url('{{ src }}')"></span>
+          <img src="{{ src }}" alt="{{ e.name }}" class="spotlight-img" referrerpolicy="no-referrer" {{ 'loading=lazy' if not loop.first }}>
+          <span class="spotlight-caption">
+            <span class="spotlight-eyebrow">
+              <span class="cat-dot" style="background: {{ e._category.color or '#999' }}"></span>
+              {{ e._category.name or 'Sem categoria' }}{% if e.subcategory %} · {{ e.subcategory }}{% endif %}
+            </span>
+            <span class="spotlight-name">{% if e.favorite %}<i class="bi bi-star-fill"></i> {% endif %}{{ e.name }}</span>
+            {% set sub = [e.brand, e.model]|select|join(' · ') %}
+            {% if sub %}<span class="spotlight-sub">{{ sub }}</span>{% endif %}
+          </span>
+        </a>
+        {% endfor %}
+      </div>
+      {% if spotlight|length > 1 %}
+      <button class="carousel-control-prev" type="button" data-bs-target="#spotlight" data-bs-slide="prev"><span class="carousel-control-prev-icon" aria-hidden="true"></span><span class="visually-hidden">Anterior</span></button>
+      <button class="carousel-control-next" type="button" data-bs-target="#spotlight" data-bs-slide="next"><span class="carousel-control-next-icon" aria-hidden="true"></span><span class="visually-hidden">Próximo</span></button>
+      {% endif %}
+      {% if spotlight_random %}
+      <span class="spotlight-hint"><i class="bi bi-shuffle"></i> Sorteados · marque <i class="bi bi-star-fill"></i> num equipamento pra fixar aqui</span>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="spotlight spotlight-empty">
+      <i class="bi bi-images"></i>
+      <p>Cadastre equipamentos com foto e marque <i class="bi bi-star-fill"></i> os favoritos pra eles aparecerem aqui.</p>
+    </div>
+    {% endif %}
   </div>
 </div>
 
+{# Atenção: só o que pede ação — cadastro incompleto e compras sem nota #}
+{% if incomplete or no_receipt %}
+<h2 class="section-title">Atenção</h2>
+<div class="attention-list mb-5">
+  {% if incomplete %}
+  <a class="attention-item" href="{{ url_for('inventory.pending') }}">
+    <span class="attention-icon is-warning"><i class="bi bi-ui-checks"></i></span>
+    <span class="flex-grow-1"><strong>{{ incomplete }}</strong> {{ 'item incompleto' if incomplete == 1 else 'itens incompletos' }}<small>faltando foto, compra, data…</small></span>
+    <i class="bi bi-chevron-right"></i>
+  </a>
+  {% endif %}
+  {% if no_receipt %}
+  <a class="attention-item" href="{{ url_for('orders.index') }}">
+    <span class="attention-icon"><i class="bi bi-receipt"></i></span>
+    <span class="flex-grow-1"><strong>{{ no_receipt }}</strong> compra{{ 's' if no_receipt > 1 }} sem nota fiscal<small>anexe na compra</small></span>
+    <i class="bi bi-chevron-right"></i>
+  </a>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="d-flex align-items-center justify-content-between mb-2">
+  <h2 class="section-title mb-0">Categorias</h2>
+  <div class="scroller-nav d-none d-md-flex gap-1">
+    <button type="button" class="btn btn-sm btn-light" data-scroll="-1" aria-label="Rolar pra esquerda"><i class="bi bi-chevron-left"></i></button>
+    <button type="button" class="btn btn-sm btn-light" data-scroll="1" aria-label="Rolar pra direita"><i class="bi bi-chevron-right"></i></button>
+  </div>
+</div>
 {% if categories %}
-<div class="category-grid">
+<div class="category-scroller" id="categoryScroller">
   {% for cat in categories %}
   <a class="category-card" href="{{ url_for('inventory.category', category_id=cat._id) }}" style="--cat-color: {{ cat.color }}">
     <div class="category-card-icon"><i class="bi {{ cat.icon }}"></i></div>
@@ -37,29 +129,18 @@
   Nenhuma categoria ainda. Rode <code>python scripts/seed_household.py --categories</code>.
 </div>
 {% endif %}
+{% endblock %}
 
-<h2 class="h5 mt-5 mb-3">Atenção</h2>
-{% if attention %}
-<div class="attention-row mb-3">
-  {% for e in attention %}
-  <a class="attention-chip" href="{{ url_for('equipment.detail', equipment_id=e._id) }}#tab-maintenance">
-    <span class="equipment-row-photo">{{ equipment_photo(e) }}</span>
-    <span class="min-width-0"><span class="d-block text-truncate fw-semibold">{{ e.name }}</span>{{ condition_badge(e.condition) }}</span>
-  </a>
-  {% endfor %}
-</div>
-{% endif %}
-<div class="placeholder-grid">
-  {% if incomplete %}
-  <a class="placeholder-card text-decoration-none pending-card" href="{{ url_for('inventory.pending') }}"><i class="bi bi-ui-checks"></i><strong>{{ incomplete }}</strong> {{ 'item incompleto' if incomplete == 1 else 'itens incompletos' }}<span class="phase-hint">foto, compra, data…</span></a>
-  {% endif %}
-  {% if not attention %}
-  <div class="placeholder-card"><i class="bi bi-emoji-smile"></i>Nada em “Sinais de Uso” ou “Quebrado”.</div>
-  {% endif %}
-  {% if no_receipt %}
-  <a class="placeholder-card text-decoration-none" href="{{ url_for('orders.index') }}"><i class="bi bi-receipt"></i>{{ no_receipt }} compra{{ 's' if no_receipt > 1 }} sem nota fiscal</a>
-  {% endif %}
-  <div class="placeholder-card"><i class="bi bi-shield-check"></i>Garantias vencendo <span class="phase-hint">fase 5</span></div>
-  <div class="placeholder-card"><i class="bi bi-link-45deg"></i>Pedidos sem pagamento no Guardiola <span class="phase-hint">🌱 fase 6</span></div>
-</div>
+{% block scripts %}
+<script>
+  (function () {
+    const scroller = document.getElementById("categoryScroller");
+    if (!scroller) return;
+    document.querySelectorAll("[data-scroll]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        scroller.scrollBy({ left: Number(btn.dataset.scroll) * scroller.clientWidth * 0.8, behavior: "smooth" });
+      });
+    });
+  })();
+</script>
 {% endblock %}

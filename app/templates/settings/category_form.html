@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% set editing = cat._id %}
-{% block title %}{{ 'Editar' if editing else 'Nova' }} categoria — Equipment Log{% endblock %}
+{% block title %}{{ 'Editar' if editing else 'Nova' }} categoria — Pataka{% endblock %}
 {% block content %}
 <a href="{{ url_for('settings.categories') }}" class="back-link"><i class="bi bi-chevron-left"></i> Categorias</a>
 <h1 class="h3 mb-4">{{ 'Editar ' ~ cat.name if editing else 'Nova categoria' }}</h1>

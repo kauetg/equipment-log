@@ -5,6 +5,8 @@
   {%- else -%}{{ order.get(key) if order.get(key) is not none else default }}{%- endif -%}
 {%- endmacro %}
 {% set cur_kind = (form or {}).get('kind') if form is not none else (order.kind or preset_kind) %}
+{% set _kind_label = {'purchase': 'compra', 'sale': 'venda', 'upgrade': 'upgrade', 'gift': 'brinde'}.get(cur_kind, 'compra') %}
+{% set order_title = ('Editar ' ~ _kind_label) if editing else (('Novo ' if cur_kind in ('upgrade', 'gift') else 'Nova ') ~ _kind_label) %}
 {% set cur_date = (form or {}).get('date') if form is not none else (order.date.strftime('%Y-%m-%d') if order.date else '') %}
 {% if form is not none %}
   {% set rows = form.rows %}
@@ -43,10 +45,10 @@
 </div>
 {%- endmacro %}
 
-{% block title %}{{ 'Editar pedido' if editing else 'Novo pedido' }} — Equipment Log{% endblock %}
+{% block title %}{{ order_title }} — Pataka{% endblock %}
 {% block content %}
-<a href="{{ url_for('orders.detail', order_id=order._id) if editing else url_for('orders.index') }}" class="back-link"><i class="bi bi-chevron-left"></i> {{ 'Pedido' if editing else 'Pedidos' }}</a>
-<h1 class="h3 mb-4">{{ 'Editar pedido' if editing else 'Novo pedido' }}</h1>
+<a href="{{ url_for('orders.detail', order_id=order._id) if editing else url_for('orders.index') }}" class="back-link"><i class="bi bi-chevron-left"></i> {{ 'Detalhe' if editing else 'Compras' }}</a>
+<h1 class="h3 mb-4">{{ order_title }}</h1>
 
 <form method="post" enctype="multipart/form-data" id="orderForm">
   <div class="row g-4">
@@ -143,7 +145,7 @@
 </form>
 {% if editing %}
 <form method="post" id="deleteOrderForm" action="{{ url_for('orders.delete', order_id=order._id) }}"
-      data-confirm="Excluir este pedido e os recibos? Os equipamentos continuam no inventário."></form>
+      data-confirm="Excluir este registro e os recibos? Os equipamentos continuam no inventário."></form>
 {% endif %}
 {% endblock %}
 

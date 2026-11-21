@@ -8,7 +8,7 @@
 {% set cur_date = (form or {}).get('date') if form is not none else (log.date.strftime('%Y-%m-%d') if log.date else '') %}
 {% set cur_cond = (form or {}).get('resulting_condition') if form is not none else log.resulting_condition %}
 {% set cur_done_by = (form or {}).get('done_by') if form is not none else ((log.done_by.user_id|string) if log.done_by and log.done_by.user_id else ('__other__' if log.done_by else '')) %}
-{% block title %}{{ 'Editar' if editing else 'Nova' }} manutenção — Equipment Log{% endblock %}
+{% block title %}{{ 'Editar' if editing else 'Nova' }} manutenção — Pataka{% endblock %}
 {% block content %}
 <a href="{{ url_for('equipment.detail', equipment_id=e._id) }}#tab-maintenance" class="back-link"><i class="bi bi-chevron-left"></i> {{ e.name }}</a>
 <div class="d-flex align-items-center gap-3 mb-4">

@@ -1,4 +1,4 @@
-# Equipment Log
+# Pataka (Equipment Log)
 
 Inventário de equipamentos (câmeras, foto sub, mergulho, eletrônicos) com log de manutenção e de
 compras/vendas. Substitui o AppSheet "Camera Log". Mesma stack do guardiola: Flask + PyMongo +
@@ -51,6 +51,14 @@ Idempotente (por `legacy_id`): rodar de novo não duplica nem sobrescreve o que 
 só cria o que falta e anexa arquivos ainda não anexados. `--files` é a pasta com os arquivos do app
 baixados do Drive: as pastas `*_Files_` e `*_Images` podem estar lado a lado ou em qualquer
 subpasta — o arquivo é procurado pelo nome. Normalização de lojas no topo do script.
+
+## Marca
+
+O app se chama **Pataka**. Logos em `app/static/img/` (os dois já trazem o nome):
+`logo_horizontal.png` no navbar e no login, `logo.png` (empilhado) grande na home. Se faltar um,
+usa o outro; sem nenhum, cai no `icon.svg` + "Pataka" em texto. Cores do tema (`theme.css`) tiradas
+do logo: verde `#027f6c`, verde claro `#3a9b88`, roxo `#444076`.
+O favicon/ícone do PWA ainda é o `icon.svg` (falta o glyph).
 
 ## Estado
 

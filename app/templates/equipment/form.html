@@ -6,7 +6,7 @@
   {%- else -%}{{ equipment.get(key) if equipment.get(key) is not none else default }}{%- endif -%}
 {%- endmacro %}
 {% set current_cat = (form or {}).get('category_id') or (equipment.category_id|string if equipment.category_id else '') %}
-{% block title %}{{ 'Editar' if editing else 'Novo' }} equipamento — Equipment Log{% endblock %}
+{% block title %}{{ 'Editar' if editing else 'Novo' }} equipamento — Pataka{% endblock %}
 {% block content %}
 <a href="{{ url_for('equipment.detail', equipment_id=equipment._id) if editing else url_for('inventory.index') }}" class="back-link">
   <i class="bi bi-chevron-left"></i> {{ 'Detalhe' if editing else 'Inventário' }}
@@ -168,7 +168,7 @@
             </div>
           </div>
           <input name="purchase_notes" class="form-control" placeholder="Notas da compra (11.11, veio com…)" value="{{ (form or {}).get('purchase_notes', '') }}">
-          <div class="small text-muted mt-2">Cria um pedido de compra com este item. Pedidos com vários itens chegam na fase 3.</div>
+          <div class="small text-muted mt-2">Cria uma compra com este item (pra compra com vários itens, use Compras).</div>
         </div>
       </section>
       {% endif %}

@@ -1,4 +1,7 @@
+import os
+
 from flask import Flask, current_app, send_from_directory
+from markupsafe import Markup, escape
 from flask_login import current_user
 
 from app.config import (
@@ -12,6 +15,9 @@ from app.config import (
 from app.extensions import init_extensions
 from app.services.completeness import CHECKS, CHECKS_BY_KEY
 from app.routes import register_blueprints
+
+
+MONTHS_PT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 
 
 def create_app(config_object=Config):
@@ -39,12 +45,19 @@ def _register_context_processors(app):
             "CHECKS": CHECKS,
             "CHECKS_BY_KEY": CHECKS_BY_KEY,
             "INTEGRATIONS": app.config["INTEGRATIONS"],
+            # Logos (já trazem o nome): logo.png empilhado (home) e logo_horizontal.png (navbar,
+            # login). Checados a cada render pra aparecerem assim que o arquivo for colocado em
+            # static/img/, sem reiniciar o servidor.
+            "LOGOS": {
+                name: os.path.exists(os.path.join(app.static_folder, "img", f"{name}.png"))
+                for name in ("logo", "logo_horizontal")
+            },
         }
         if current_user.is_authenticated:
             household = current_app.db.households.find_one(
                 {"_id": current_user.household_id}, {"name": 1}
             )
-            ctx["account_menu_household_name"] = household["name"] if household else "Equipment Log"
+            ctx["account_menu_household_name"] = household["name"] if household else "Pataka"
         return ctx
 
 
@@ -54,11 +67,19 @@ def _register_template_filters(app):
     app.jinja_env.globals.update(file_url=file_url, is_image=is_image)
 
     @app.template_filter("usd")
-    def usd_filter(value):
-        """usd(2353) -> 'USD 2,353.00'. Tudo no app é USD (ver config.BASE_CURRENCY)."""
+    def usd_filter(value, decimals=2):
+        """usd(2353) -> 'USD 2,353.00'. Tudo no app é USD (ver config.BASE_CURRENCY).
+        Sai embrulhado em .money pro modo "ocultar valores" (menu da conta) trocar por ••••."""
         if value is None:
             return "—"
-        return f"USD {value:,.2f}"
+        return money_markup(f"USD {value:,.{decimals}f}")
+
+    app.jinja_env.globals.update(money=money_markup)
+
+    @app.template_filter("day_month")
+    def day_month_filter(value):
+        """14 nov — dia + mês abreviado em pt, pra listas onde o ano já aparece em destaque."""
+        return f"{value.day} {MONTHS_PT[value.month - 1]}" if value else "—"
 
     @app.template_filter("date_br")
     def date_br_filter(value):
@@ -79,3 +100,11 @@ def _register_pwa_routes(app):
         response = send_from_directory(app.static_folder, "service-worker.js")
         response.headers["Cache-Control"] = "no-cache"
         return response
+
+
+def money_markup(text):
+    """Valor em dinheiro com a versão mascarada do lado; o CSS mostra uma ou outra conforme
+    <html class="hide-money"> (ligado no menu da conta, guardado no localStorage do aparelho)."""
+    text = escape(text)
+    mask = escape(text.split(" ")[0] + " ••••") if " " in text else "••••"
+    return Markup(f'<span class="money"><span class="money-val">{text}</span><span class="money-mask">{mask}</span></span>')

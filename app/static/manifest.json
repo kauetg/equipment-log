@@ -1,12 +1,12 @@
 {
-  "name": "Equipment Log",
-  "short_name": "Equipment",
+  "name": "Pataka",
+  "short_name": "Pataka",
   "description": "Inventário, manutenção e compras de equipamentos",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#fbfbf2",
-  "theme_color": "#1a9c8a",
+  "theme_color": "#027f6c",
   "orientation": "portrait",
   "icons": [
     { "src": "/static/img/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }

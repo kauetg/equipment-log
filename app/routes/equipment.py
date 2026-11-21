@@ -419,6 +419,19 @@ def delete_gallery(equipment_id, file_id):
     return redirect(url_for("equipment.detail", equipment_id=equipment_id, _anchor="tab-files"))
 
 
+@equipment_bp.route("/<equipment_id>/favorite", methods=["POST"])
+@login_required
+def toggle_favorite(equipment_id):
+    """Liga/desliga a estrelinha. Favoritos vão pro carrossel da home."""
+    equipment = _get_equipment_or_404(equipment_id)
+    favorite = not equipment.get("favorite", False)
+    current_app.db.equipment.update_one({"_id": equipment["_id"]}, {"$set": {"favorite": favorite}})
+    nxt = request.form.get("next", "")
+    if nxt.startswith("/") and not nxt.startswith("//"):
+        return redirect(nxt)
+    return redirect(url_for("equipment.detail", equipment_id=equipment_id))
+
+
 @equipment_bp.route("/<equipment_id>/cover/<file_id>", methods=["POST"])
 @login_required
 def set_cover(equipment_id, file_id):

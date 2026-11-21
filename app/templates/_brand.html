@@ -1,0 +1,12 @@
+{# Marca do app. `name` escolhe o arquivo em static/img/: "logo" (empilhado, pra home) ou
+   "logo_horizontal" (navbar/login). Os dois já trazem o nome "Pataka"; se o arquivo pedido não
+   existir, tenta o outro e por último cai no ícone + nome em texto. `cls` é a classe do <img>. #}
+{% macro brand_logo(cls="nav-logo", name="logo_horizontal") -%}
+  {%- set other = "logo" if name == "logo_horizontal" else "logo_horizontal" -%}
+  {%- set file = name if LOGOS[name] else (other if LOGOS[other] else none) -%}
+  {%- if file -%}
+  <img src="{{ url_for('static', filename='img/' ~ file ~ '.png') }}" alt="Pataka" class="brand-logo {{ cls }}">
+  {%- else -%}
+  <span class="brand-fallback {{ cls }}-fallback"><img src="{{ url_for('static', filename='img/icon.svg') }}" alt="" class="{{ cls }}"><span class="brand-name">Pataka</span></span>
+  {%- endif -%}
+{%- endmacro %}

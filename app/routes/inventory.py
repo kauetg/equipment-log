@@ -6,7 +6,7 @@ from flask_login import current_user, login_required
 
 from app.routes._helpers import oid_or_404
 from app.services.completeness import CHECKS, CHECKS_BY_KEY, build_context, get_pending, missing_for
-from app.services.inventory_queries import INACTIVE_STATUSES, get_categories_with_counts
+from app.services.inventory_queries import INACTIVE_STATUSES, get_categories_with_counts, get_spotlight
 
 inventory_bp = Blueprint("inventory", __name__)
 
@@ -20,16 +20,7 @@ def index():
         "count": sum(c["count"] for c in categories),
         "invested": sum(c["invested"] for c in categories),
     }
-    attention = list(
-        db.equipment.find(
-            {
-                "household_id": current_user.household_id,
-                "condition": {"$in": ["wear", "broken"]},
-                "status": {"$nin": list(INACTIVE_STATUSES)},
-            },
-            {"name": 1, "condition": 1, "photo": 1, "category_id": 1},
-        ).sort([("condition", 1), ("name", 1)])
-    )
+    spotlight, spotlight_random = get_spotlight(db, current_user.household_id, categories)
     no_receipt = db.orders.count_documents(
         {"household_id": current_user.household_id, "kind": {"$in": ["purchase", "upgrade"]}, "receipts": {"$size": 0}}
     )
@@ -38,7 +29,8 @@ def index():
         "inventory/index.html",
         categories=categories,
         totals=totals,
-        attention=attention,
+        spotlight=spotlight,
+        spotlight_random=spotlight_random,
         no_receipt=no_receipt,
         incomplete=incomplete,
     )

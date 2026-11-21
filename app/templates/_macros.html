@@ -17,7 +17,7 @@
   {%- if e.photo -%}
   <img src="{{ file_url(e.photo, thumb=(size == 'thumb')) }}" alt="{{ e.name }}" loading="lazy" referrerpolicy="no-referrer">
   {%- else -%}
-  <span class="photo-fallback" style="--cat-color: {{ (category or {}).get('color', '#1a9c8a') }}"><i class="bi {{ (category or {}).get('icon', 'bi-box') }}"></i></span>
+  <span class="photo-fallback" style="--cat-color: {{ (category or {}).get('color', '#027f6c') }}"><i class="bi {{ (category or {}).get('icon', 'bi-box') }}"></i></span>
   {%- endif -%}
 {%- endmacro %}
 
@@ -25,6 +25,7 @@
 <a class="equipment-card" href="{{ url_for('equipment.detail', equipment_id=e._id) }}">
   <div class="equipment-card-photo">
     {{ equipment_photo(e, category) }}
+    {% if e.favorite %}<span class="favorite-badge" title="Favorito"><i class="bi bi-star-fill"></i></span>{% endif %}
     {% if e._missing %}<span class="incomplete-dot" title="Falta: {% for k in e._missing %}{{ CHECKS_BY_KEY[k].label|lower }}{{ ', ' if not loop.last }}{% endfor %}"></span>{% endif %}
   </div>
   <div class="equipment-card-body">

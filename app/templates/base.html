@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Equipment Log{% endblock %}</title>
+  <title>{% block title %}Pataka{% endblock %}</title>
 
   <link rel="manifest" href="{{ url_for('pwa_manifest') }}">
-  <meta name="theme-color" content="#1a9c8a">
+  <meta name="theme-color" content="#027f6c">
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/icon.svg') }}">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/icon.svg') }}">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Equipment Log">
+  <meta name="apple-mobile-web-app-title" content="Pataka">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,23 +19,29 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <link href="{{ url_for('static', filename='css/theme.css') }}" rel="stylesheet">
+  <script>
+    // Modo "ocultar valores" (menu da conta): aplicado antes de pintar a página pra não piscar o valor
+    try { if (localStorage.getItem("pataka-hide-money") === "1") document.documentElement.classList.add("hide-money"); } catch (e) {}
+  </script>
   {% block head %}{% endblock %}
 </head>
 <body>
+  {% from "_brand.html" import brand_logo with context %}
   {% if current_user.is_authenticated %}
   {% set ep = request.endpoint or '' %}
-  <nav class="navbar navbar-expand-lg navbar-light app-navbar border-bottom mb-2">
+  {# Na home do desktop o hero já tem logo, menu da conta e atalhos (igual ao guardiola) #}
+  <nav class="navbar navbar-expand-lg navbar-light app-navbar border-bottom mb-2 {{ 'nav-home-desktop-hide' if ep == 'inventory.index' }}">
     <div class="container">
       <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('inventory.index') }}">
-        <img src="{{ url_for('static', filename='img/icon.svg') }}" alt="" class="nav-logo"> Equipment Log
+        {{ brand_logo('nav-logo') }}
       </a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain" aria-controls="navMain" aria-expanded="false" aria-label="Abrir menu">
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navMain">
         <div class="navbar-nav ms-auto gap-lg-1 align-items-lg-center">
-          <a class="nav-link {{ 'active' if ep.startswith('inventory.') or ep.startswith('equipment.') }}" href="{{ url_for('inventory.index') }}"><i class="bi bi-grid"></i> Inventário</a>
-          <a class="nav-link {{ 'active' if ep.startswith('orders.') }}" href="{{ url_for('orders.index') }}"><i class="bi bi-bag"></i> Pedidos</a>
+          <a class="nav-link {{ 'active' if (ep.startswith('inventory.') and ep != 'inventory.index') or ep.startswith('equipment.') }}" href="{{ url_for('equipment.index') }}"><i class="bi bi-grid"></i> Inventário</a>
+          <a class="nav-link {{ 'active' if ep.startswith('orders.') }}" href="{{ url_for('orders.index') }}"><i class="bi bi-bag"></i> Compras</a>
           <a class="nav-link {{ 'active' if ep.startswith('maintenance.') }}" href="{{ url_for('maintenance.index') }}"><i class="bi bi-tools"></i> Manutenção</a>
           <a class="nav-link {{ 'active' if ep.startswith('reports.') }}" href="{{ url_for('reports.index') }}"><i class="bi bi-bar-chart-line"></i> Relatórios</a>
           <a class="nav-link {{ 'active' if ep == 'settings.categories' }}" href="{{ url_for('settings.categories') }}"><i class="bi bi-tags"></i> Categorias</a>
@@ -105,6 +111,25 @@
       const d = new Date();
       input.value = [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
     });
+  </script>
+  <script>
+    (function () {
+      const root = document.documentElement;
+      function paint() {
+        const hidden = root.classList.contains("hide-money");
+        document.querySelectorAll("[data-toggle-money]").forEach(function (btn) {
+          btn.querySelector("i").className = "bi " + (hidden ? "bi-eye" : "bi-eye-slash");
+          btn.querySelector("span").textContent = hidden ? "Mostrar valores" : "Ocultar valores";
+        });
+      }
+      document.addEventListener("click", function (ev) {
+        if (!ev.target.closest("[data-toggle-money]")) return;
+        const hidden = root.classList.toggle("hide-money");
+        try { localStorage.setItem("pataka-hide-money", hidden ? "1" : "0"); } catch (e) {}
+        paint();
+      });
+      paint();
+    })();
   </script>
   {% block scripts %}{% endblock %}
 </body>

@@ -48,7 +48,7 @@ def _read_form(categories):
 
     kind = form.get("kind")
     if kind not in ORDER_KINDS:
-        errors.append("Escolha o tipo do pedido.")
+        errors.append("Escolha o tipo (compra, venda…).")
     date = parse_date(form.get("date"))
     if not date:
         errors.append("Data é obrigatória.")
@@ -87,7 +87,7 @@ def _read_form(categories):
                 errors.append(f"Item {idx + 1}: equipamento inválido.")
                 continue
             if any(i["equipment_id"] == eid for i in items):
-                errors.append(f"Item {idx + 1}: equipamento repetido no pedido.")
+                errors.append(f"Item {idx + 1}: equipamento repetido.")
                 continue
             items.append({"equipment_id": eid, "amount": amount})
 
@@ -203,7 +203,17 @@ def index():
         query["date"] = {"$gte": datetime(y, 1, 1, tzinfo=timezone.utc), "$lt": datetime(y + 1, 1, 1, tzinfo=timezone.utc)}
     if filters["q"]:
         pattern = {"$regex": re.escape(filters["q"]), "$options": "i"}
-        query["$or"] = [{"counterparty": pattern}, {"platform": pattern}, {"notes": pattern}]
+        # Também acha pelo equipamento (nome, marca, modelo) — é o que aparece em destaque na lista
+        eq_ids = db.equipment.distinct(
+            "_id",
+            {"household_id": hid, "$or": [{"name": pattern}, {"brand": pattern}, {"model": pattern}]},
+        )
+        query["$or"] = [
+            {"counterparty": pattern},
+            {"platform": pattern},
+            {"notes": pattern},
+            {"items.equipment_id": {"$in": eq_ids}},
+        ]
 
     orders = list(db.orders.find(query).sort([("date", DESCENDING), ("created_at", DESCENDING)]))
     equipment = {
@@ -283,7 +293,7 @@ def edit(order_id):
         for ref in old_receipts:
             delete_ref(ref)
         sync_after_order_change(db, order, {**order, **update})
-        flash("Pedido salvo.", "success")
+        flash("Salvo.", "success")
         return redirect(url_for("orders.detail", order_id=order_id))
     return _render_form(order)
 
@@ -297,5 +307,5 @@ def delete(order_id):
         delete_ref(ref)
     db.orders.delete_one({"_id": order["_id"]})
     sync_after_order_change(db, order, None)
-    flash("Pedido excluído (os equipamentos continuam no inventário).", "success")
+    flash("Excluído (os equipamentos continuam no inventário).", "success")
     return redirect(url_for("orders.index"))

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% from "_macros.html" import equipment_photo, status_badge, attachment_strip with context %}
-{% block title %}{{ ORDER_KINDS.get(o.kind) }} {{ o.counterparty }} — Equipment Log{% endblock %}
+{% block title %}{{ ORDER_KINDS.get(o.kind) }} {{ o.counterparty }} — Pataka{% endblock %}
 {% block content %}
-<a href="{{ url_for('orders.index') }}" class="back-link"><i class="bi bi-chevron-left"></i> Pedidos</a>
+<a href="{{ url_for('orders.index') }}" class="back-link"><i class="bi bi-chevron-left"></i> Compras</a>
 
 <div class="detail-header detail-header-order">
   <div>
@@ -11,7 +11,7 @@
     <div class="text-muted mb-3">{{ o.date|date_br }}{% if o.platform %} · {{ o.platform }}{% endif %}</div>
     <dl class="detail-facts">
       <div><dt>Total</dt><dd>{{ o.total|usd }}</dd></div>
-      {% if o.original_currency %}<div><dt>Pago na loja</dt><dd>{{ o.original_currency }} {{ '{:,.2f}'.format(o.original_total) }}</dd></div>{% endif %}
+      {% if o.original_currency %}<div><dt>Pago na loja</dt><dd>{{ money(o.original_currency ~ ' ' ~ '{:,.2f}'.format(o.original_total)) }}</dd></div>{% endif %}
       <div><dt>Itens</dt><dd>{{ o['items']|length }}</dd></div>
     </dl>
     {% if o.notes %}<p class="prewrap mb-3">{{ o.notes }}</p>{% endif %}

@@ -4,6 +4,9 @@
   </div>
   <div class="account-menu-name">{{ current_user.name }}</div>
   <hr>
+  <button type="button" class="account-menu-link btn-reset" data-toggle-money>
+    <i class="bi bi-eye-slash"></i> <span>Ocultar valores</span>
+  </button>
   <a class="account-menu-link" href="{{ url_for('settings.change_password') }}">
     <i class="bi bi-key"></i> Trocar senha
   </a>
