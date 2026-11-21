@@ -1,19 +1,18 @@
-from flask import Blueprint, abort, send_file
+from flask import Blueprint, abort
 from flask_login import current_user, login_required
 
-from app.services.storage import FileNotFound, get_storage
+from app.services.storage import FileNotFound, storage_for
 
 files_bp = Blueprint("files", __name__, url_prefix="/files")
 
-# id do arquivo nunca muda (upload novo = id novo), então dá pra cachear "pra sempre" no browser
-_CACHE_SECONDS = 60 * 60 * 24 * 365
 
-
-@files_bp.route("/<file_id>")
+# <path:> porque a chave do S3 tem "/" ("<household_id>/<uuid>.jpg")
+@files_bp.route("/<path:file_id>")
 @login_required
 def serve(file_id):
+    """Confere o household e entrega o arquivo: S3 → redirect pra URL assinada;
+    GridFS → stream direto do Mongo."""
     try:
-        stream, name, content_type = get_storage().open(file_id, current_user.household_id)
+        return storage_for(file_id).serve(file_id, current_user.household_id)
     except FileNotFound:
         abort(404)
-    return send_file(stream, mimetype=content_type, download_name=name, max_age=_CACHE_SECONDS)

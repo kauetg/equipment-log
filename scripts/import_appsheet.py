@@ -171,8 +171,8 @@ class Importer:
         if not self.files_dir:
             self.r.counts["arquivos pendentes (sem --files)"] += 1
             return None
-        path = self.files_dir / value
-        if not path.is_file():
+        path = self.resolve_file(value)
+        if not path:
             self.r.warn(f"arquivo não encontrado: {value}")
             self.r.counts["arquivos não encontrados"] += 1
             return None
@@ -183,6 +183,27 @@ class Importer:
         ref = save_bytes(path.read_bytes(), path.name, content_type, self.hid, kind=kind)
         ref["legacy_path"] = value
         return ref
+
+    def resolve_file(self, value):
+        """Acha o arquivo do xlsx na pasta informada. Primeiro o caminho exato
+        (pasta/Equipamentos_Files_/x.jpg); se não existir, procura pelo nome do arquivo em
+        qualquer subpasta — cobre as pastas *_Files_ e *_Images juntas ou separadas, zip
+        extraído com uma pasta a mais por cima, "Equipamentos_Images (1)" etc."""
+        exact = self.files_dir / value
+        if exact.is_file():
+            return exact
+        if not hasattr(self, "_by_name"):
+            self._by_name = defaultdict(list)
+            for p in self.files_dir.rglob("*"):
+                if p.is_file():
+                    self._by_name[p.name].append(p)
+        candidates = self._by_name.get(Path(value).name, [])
+        if len(candidates) > 1:
+            # mesmo nome em duas pastas: prefere a que tem o nome da pasta do xlsx no caminho
+            folder = Path(value).parent.name
+            preferred = [p for p in candidates if folder and folder in str(p.parent)]
+            candidates = preferred or candidates
+        return candidates[0] if candidates else None
 
     @staticmethod
     def has_file(refs, legacy_path):
@@ -476,7 +497,11 @@ class Importer:
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("xlsx")
-    parser.add_argument("--files", help="pasta do app baixada do Drive (com Equipamentos_Files_/ etc.)")
+    parser.add_argument(
+        "--files",
+        help="pasta com os arquivos do app baixados do Drive (as pastas *_Files_ e *_Images podem estar "
+        "lado a lado ou em qualquer subpasta — o arquivo é procurado pelo nome)",
+    )
     parser.add_argument("--household", help="nome do household (se houver mais de um)")
     parser.add_argument("--apply", action="store_true", help="grava de verdade (sem isso é dry-run)")
     args = parser.parse_args()

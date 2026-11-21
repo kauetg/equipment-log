@@ -18,8 +18,22 @@ class Config:
     REMEMBER_COOKIE_DURATION = timedelta(days=30)
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50 MB por request (manual em PDF pode ser grande)
 
-    # Backend de arquivos (ver services/storage.py). MVP = GridFS; "r2" quando crescer.
-    STORAGE_BACKEND = os.environ.get("STORAGE_BACKEND", "gridfs")
+    # Arquivos (fotos, recibos, manuais) — ver services/storage.py. Só arquivos; dados ficam no Mongo.
+    # "cloudinary" (grátis, sem cartão), "s3" (R2/B2/AWS) ou "gridfs" (dentro do Mongo).
+    # Sem STORAGE_BACKEND explícito: o primeiro que estiver configurado COM credenciais.
+    CLOUDINARY_URL = os.environ.get("CLOUDINARY_URL")  # cloudinary://<api_key>:<api_secret>@<cloud_name>
+    CLOUDINARY_FOLDER = os.environ.get("CLOUDINARY_FOLDER", "equipment-log")  # pasta do app na conta
+    S3_BUCKET = os.environ.get("S3_BUCKET")
+    S3_ENDPOINT_URL = os.environ.get("S3_ENDPOINT_URL")  # R2: https://<account_id>.r2.cloudflarestorage.com
+    S3_ACCESS_KEY_ID = os.environ.get("S3_ACCESS_KEY_ID")
+    S3_SECRET_ACCESS_KEY = os.environ.get("S3_SECRET_ACCESS_KEY")
+    S3_REGION = os.environ.get("S3_REGION", "auto")  # R2 = "auto"
+    S3_PRESIGN_SECONDS = int(os.environ.get("S3_PRESIGN_SECONDS", 3600))
+    STORAGE_BACKEND = os.environ.get("STORAGE_BACKEND") or (
+        "cloudinary" if CLOUDINARY_URL
+        else "s3" if (S3_BUCKET and S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY)
+        else "gridfs"
+    )
 
     # 🌱 Integrações futuras (PLANO.md §8) — desligadas até serem implementadas.
     # Mesmo cluster Atlas → o guardiola é lido pelo mesmo MongoClient, só outro database.

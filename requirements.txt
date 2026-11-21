@@ -6,3 +6,5 @@ dnspython
 python-dotenv
 Pillow
 openpyxl
+boto3
+cloudinary

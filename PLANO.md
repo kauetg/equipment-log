@@ -155,8 +155,8 @@ Com ~90 arquivos hoje, o volume é baixo:
 
 | Fase | Backend | Por quê |
 |---|---|---|
-| **MVP** ⭐ | **GridFS** (no próprio Mongo) | zero conta nova, zero credencial, backup junto com o banco. ~90 arquivos redimensionados ≈ 30–60 MB, cabe no Atlas free (512 MB) com folga |
-| Quando crescer | **Cloudflare R2** | 10 GB grátis, sem custo de download, `boto3`. Troca só o backend + script de migração |
+| ~~MVP~~ | **GridFS** (no próprio Mongo) — continua como fallback sem credenciais | zero conta nova, zero credencial, backup junto com o banco. ~90 arquivos redimensionados ≈ 30–60 MB, cabe no Atlas free (512 MB) com folga |
+| ✅ **Atual** (2026-11-21) | **Cloudinary** (grátis, sem cartão) ou **S3-compatível** (R2/B2/AWS) | Cloudinary: `CLOUDINARY_URL`, arquivos `authenticated`. S3: `boto3`, bucket privado. Escolha automática pelo `.env`; `scripts/migrate_files.py` move o que estiver no GridFS |
 | — | Google Drive API | **não**: service account, quota, sem URL boa pra `<img>` |
 | — | Disco local | some a cada deploy |
 

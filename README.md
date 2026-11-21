@@ -16,17 +16,41 @@ cp .env.example .env        # preencher MONGO_URI (mesmo cluster do guardiola) e
 
 `scripts/seed_household.py --categories` só completa as categorias que faltam.
 
+### Arquivos (fotos, recibos, manuais)
+
+Só os arquivos saem do Mongo; os dados continuam lá. O app usa o primeiro backend configurado
+**com credenciais** no `.env` (ver `.env.example`):
+
+1. **Cloudinary** (recomendado — grátis, sem cartão): `CLOUDINARY_URL`, copiada de
+   Dashboard → API Keys → *API environment variable*. Arquivos sobem como `authenticated`
+   (link direto não abre sem assinatura), na pasta `CLOUDINARY_FOLDER` (padrão `equipment-log/`,
+   uma subpasta por household) — não mistura com outros apps da mesma conta.
+2. **S3-compatível** (Cloudflare R2, Backblaze B2, AWS S3): `S3_BUCKET`, `S3_ENDPOINT_URL`,
+   `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`. Bucket privado, link assinado de 1 h.
+3. Nenhum → GridFS (dentro do Mongo).
+
+Em todos os casos `/files/<id>` confere o household antes de entregar. Imagens são reduzidas
+(1600px + thumb 400px) antes de subir. PDFs no Cloudinary grátis: se um PDF não abrir, ative
+*Settings → Security → Allow delivery of PDF and ZIP files*.
+
+Arquivos que já estejam no GridFS migram com:
+
+```bash
+.venv/bin/python scripts/migrate_files.py                           # dry-run
+.venv/bin/python scripts/migrate_files.py --apply --delete-gridfs
+```
+
 ### Import do AppSheet
 
 ```bash
-.venv/bin/python scripts/import_appsheet.py "Camera Log.xlsx"                                  # dry-run
-.venv/bin/python scripts/import_appsheet.py "Camera Log.xlsx" --files ~/Downloads/camera_log --apply
+.venv/bin/python scripts/import_appsheet.py "data/Camera Log.xlsx"                                  # dry-run
+.venv/bin/python scripts/import_appsheet.py "data/Camera Log.xlsx" --files data --apply
 ```
 
 Idempotente (por `legacy_id`): rodar de novo não duplica nem sobrescreve o que foi editado no app,
-só cria o que falta e anexa arquivos ainda não anexados. `--files` é a pasta do app baixada do
-Drive (com `Equipamentos_Files_/`, `Equipamentos_Images/`, `Transacoes_Files_/`,
-`Transacoes_Images/`, `Log_Manutencao_Images/`). Normalização de lojas no topo do script.
+só cria o que falta e anexa arquivos ainda não anexados. `--files` é a pasta com os arquivos do app
+baixados do Drive: as pastas `*_Files_` e `*_Images` podem estar lado a lado ou em qualquer
+subpasta — o arquivo é procurado pelo nome. Normalização de lojas no topo do script.
 
 ## Estado
 
