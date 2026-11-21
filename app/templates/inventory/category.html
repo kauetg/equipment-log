@@ -7,38 +7,67 @@
   <div class="d-flex align-items-center gap-2">
     <span class="category-card-icon mb-0" style="--cat-color: {{ cat.color }}"><i class="bi {{ cat.icon }}"></i></span>
     <h1 class="h3 mb-0">{{ cat.name }}</h1>
+    <span class="badge rounded-pill text-bg-light border">{{ total }}</span>
   </div>
   <a href="{{ url_for('equipment.new', category=cat._id) }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Equipamento</a>
 </div>
 
-{% set qs_all = {'all': '1'} if show_all else {} %}
-<div class="chip-row mb-4">
-  <a class="chip {{ 'is-active' if not sub }}" href="{{ url_for('inventory.category', category_id=cat._id, **qs_all) }}">Tudo <span>{{ total }}</span></a>
-  {% for s in cat.subcategories %}
-  <a class="chip {{ 'is-active' if sub == s }}" href="{{ url_for('inventory.category', category_id=cat._id, sub=s, **qs_all) }}">{{ s }} <span>{{ sub_counts.get(s, 0) }}</span></a>
-  {% endfor %}
-  {% for s, n in sub_counts.items() if s and s not in cat.subcategories %}
-  <a class="chip {{ 'is-active' if sub == s }}" href="{{ url_for('inventory.category', category_id=cat._id, sub=s, **qs_all) }}">{{ s }} <span>{{ n }}</span></a>
+{% if sections %}
+{# Chips filtram as seções na hora (sem recarregar); ?sub= abre já filtrado #}
+{% if sections|length > 1 %}
+<div class="chip-row mb-4 sub-chips" style="--cat-color: {{ cat.color }}">
+  <button type="button" class="chip {{ 'is-active' if not active }}" data-sub="">Tudo <span>{{ total }}</span></button>
+  {% for s in sections %}
+  <button type="button" class="chip {{ 'is-active' if active == s.slug }}" data-sub="{{ s.slug }}">{{ s.name or 'Sem subcategoria' }} <span>{{ s['items']|length }}</span></button>
   {% endfor %}
 </div>
+{% endif %}
 
-{% if items %}
-<div class="equipment-grid">
-  {% for e in items %}{{ equipment_card(e, cat) }}{% endfor %}
-</div>
+{% for s in sections %}
+<section class="sub-section" id="sub-{{ s.slug }}" data-sub="{{ s.slug }}" style="--cat-color: {{ cat.color }}"
+         {{ 'hidden' if active and active != s.slug }}>
+  <h2 class="sub-section-title">
+    <span>{{ s.name or 'Sem subcategoria' }}</span>
+    <span class="sub-section-count">{{ s['items']|length }}</span>
+  </h2>
+  <div class="equipment-grid">
+    {% for e in s['items'] %}{{ equipment_card(e, cat) }}{% endfor %}
+  </div>
+</section>
+{% endfor %}
 {% else %}
 <div class="empty-state">
   <i class="bi {{ cat.icon }}"></i>
-  <p>Nada aqui{{ ' em ' ~ sub if sub }} ainda.</p>
+  <p>Nada aqui ainda.</p>
   <a href="{{ url_for('equipment.new', category=cat._id) }}" class="btn btn-outline-primary btn-sm">Cadastrar o primeiro</a>
 </div>
 {% endif %}
 
 <div class="text-center mt-4 small">
   {% if show_all %}
-  <a href="{{ url_for('inventory.category', category_id=cat._id, sub=sub or None) }}">Esconder vendidos/descartados</a>
+  <a href="{{ url_for('inventory.category', category_id=cat._id) }}">Esconder vendidos/descartados</a>
   {% elif hidden_inactive %}
-  <a href="{{ url_for('inventory.category', category_id=cat._id, sub=sub or None, all=1) }}">Mostrar {{ hidden_inactive }} vendido{{ 's' if hidden_inactive > 1 }}/descartado{{ 's' if hidden_inactive > 1 }}</a>
+  <a href="{{ url_for('inventory.category', category_id=cat._id, all=1) }}">Mostrar {{ hidden_inactive }} vendido{{ 's' if hidden_inactive > 1 }}/descartado{{ 's' if hidden_inactive > 1 }}</a>
   {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    const chips = document.querySelectorAll(".sub-chips .chip");
+    const sections = document.querySelectorAll(".sub-section");
+    chips.forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        const sub = chip.dataset.sub;
+        chips.forEach(function (c) { c.classList.toggle("is-active", c === chip); });
+        sections.forEach(function (s) { s.hidden = !!sub && s.dataset.sub !== sub; });
+        // mantém o filtro na URL (voltar/compartilhar) sem recarregar
+        const url = new URL(window.location);
+        if (sub) url.searchParams.set("sub", sub); else url.searchParams.delete("sub");
+        history.replaceState(null, "", url);
+      });
+    });
+  })();
+</script>
 {% endblock %}

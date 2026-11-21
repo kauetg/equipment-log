@@ -23,6 +23,7 @@ file ref (embutida nos documentos):
 
 import io
 import os
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -160,6 +161,15 @@ class S3Storage:
         self.client.delete_object(Bucket=self.bucket, Key=file_id)
 
 
+def _clean_folder(value, default="equipment-log"):
+    """Nome de pasta seguro: corta comentário colado ("equipment-log# …", que o .env não tira
+    sem espaço antes do #), espaços e qualquer caractere fora de letras/números/-/_//."""
+    value = (value or "").split("#", 1)[0].strip()
+    value = re.sub(r"[^A-Za-z0-9_\-/]", "", value).strip("/")
+    value = re.sub(r"/{2,}", "/", value)
+    return value or default
+
+
 class CloudinaryStorage:
     """Cloudinary (plano grátis sem cartão). Os arquivos sobem como `authenticated`: o link
     direto não funciona sem assinatura — o app gera a URL assinada depois de conferir o household.
@@ -190,7 +200,7 @@ class CloudinaryStorage:
             secure=True,
         )
         # Pasta própria do app na conta (a mesma conta pode servir outros apps)
-        self.FOLDER = (config.get("CLOUDINARY_FOLDER") or "equipment-log").strip("/")
+        self.FOLDER = _clean_folder(config.get("CLOUDINARY_FOLDER"))
 
     @classmethod
     def owns(cls, file_id):
@@ -208,7 +218,11 @@ class CloudinaryStorage:
             resource_type, public_id = self._split(file_id)
         except ValueError:
             raise FileNotFound(file_id)
-        if not public_id.startswith(f"{self.FOLDER}/{household_id}/"):
+        # public_id = "<pasta>/<household_id>/<uuid>[.ext]". Confere só o household (penúltimo
+        # pedaço) — não a pasta configurada agora, pra arquivos antigos sobreviverem a uma troca
+        # de CLOUDINARY_FOLDER (ou a um .env com valor estranho).
+        parts = public_id.split("/")
+        if len(parts) < 3 or parts[-2] != str(household_id):
             raise FileNotFound(file_id)
         return resource_type, public_id
 

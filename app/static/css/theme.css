@@ -478,3 +478,23 @@ a:hover { color: var(--brand-active); }
 
 .filter-bar-3 { grid-template-columns: repeat(3, 1fr); }
 @media (max-width: 767.98px) { .filter-bar-3 { grid-template-columns: 1fr; } }
+
+/* ===================== Categoria agrupada por subcategoria ===================== */
+.sub-section { margin-bottom: 2rem; scroll-margin-top: 1rem; }
+.sub-section-title {
+  display: flex; align-items: center; gap: 0.6rem;
+  font-size: 1.15rem; font-weight: 700; color: var(--brand-navy);
+  margin-bottom: 0.85rem; padding-left: 0.7rem;
+  border-left: 4px solid var(--cat-color, var(--brand));
+  line-height: 1.6;
+}
+.sub-section-count {
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-size: 0.75rem; font-weight: 800;
+  padding: 0.1rem 0.55rem; border-radius: 50rem;
+  background: color-mix(in srgb, var(--cat-color, var(--brand)) 14%, white);
+  color: color-mix(in srgb, var(--cat-color, var(--brand)) 80%, black);
+}
+.sub-chips .chip { cursor: pointer; }
+.sub-chips .chip:hover { border-color: var(--cat-color); color: var(--cat-color); }
+.sub-chips .chip.is-active { background: var(--cat-color); border-color: var(--cat-color); color: #fff; }

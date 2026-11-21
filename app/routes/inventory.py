@@ -1,3 +1,6 @@
+import re
+import unicodedata
+
 from flask import Blueprint, abort, current_app, render_template, request
 from flask_login import current_user, login_required
 
@@ -50,12 +53,24 @@ def category(category_id):
     if not show_all:
         base["status"] = {"$nin": list(INACTIVE_STATUSES)}
 
-    items = list(current_app.db.equipment.find({**base, **({"subcategory": sub} if sub else {})}).sort("name", 1))
+    items = list(current_app.db.equipment.find(base).sort("name", 1))
 
-    # Contagem por subcategoria pros chips (respeitando o filtro de inativos)
-    sub_counts = {}
-    for row in current_app.db.equipment.aggregate([{"$match": base}, {"$group": {"_id": "$subcategory", "n": {"$sum": 1}}}]):
-        sub_counts[row["_id"] or ""] = row["n"]
+    # Uma seção por subcategoria (estilo "agrupado por país" do program-planner): na ordem
+    # configurada na categoria, depois subcategorias soltas (digitadas/importadas) em ordem
+    # alfabética, e por último os itens sem subcategoria. Seção vazia não aparece.
+    by_sub = {}
+    for e in items:
+        by_sub.setdefault(e.get("subcategory") or "", []).append(e)
+    order = [s for s in cat.get("subcategories", []) if s in by_sub]
+    order += sorted(s for s in by_sub if s and s not in order)
+    if "" in by_sub:
+        order.append("")
+    sections = [{"name": s, "slug": _slug(s) or "sem-subcategoria", "items": by_sub[s]} for s in order]
+    # ?sub= aceita slug ou nome; se não bater com nenhuma seção, mostra tudo
+    active = _slug(sub) if sub else ""
+    if active not in {s["slug"] for s in sections}:
+        active = ""
+
     hidden_inactive = 0
     if not show_all:
         hidden_inactive = current_app.db.equipment.count_documents(
@@ -65,10 +80,14 @@ def category(category_id):
     return render_template(
         "inventory/category.html",
         cat=cat,
-        items=items,
-        sub=sub,
-        sub_counts=sub_counts,
-        total=sum(sub_counts.values()),
+        sections=sections,
+        active=active,
+        total=len(items),
         show_all=show_all,
         hidden_inactive=hidden_inactive,
     )
+
+
+def _slug(text):
+    text = unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
